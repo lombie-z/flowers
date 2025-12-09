@@ -1,39 +1,46 @@
 'use client'
 import { Canvas } from '@react-three/fiber'
-import { ScrollControls, Environment } from '@react-three/drei'
+import { ScrollControls, Environment, Float } from '@react-three/drei'
 import { EffectComposer, DepthOfField } from '@react-three/postprocessing'
-import { FlowerField } from '@/app/components/FlowerField'
+import { Suspense } from 'react'
+import { FlowerVine } from '@/app/components/FlowerVine'
+import { Stem } from '@/app/components/Stem'
 import { CameraRig } from '@/app/components/CameraRig'
 
 export default function Page() {
   return (
-    <div style={{ 
-      height: '100vh', 
-      width: '100vw',
-      background: 'linear-gradient(to bottom, #E6F3FF, #FFE6F0)'
-    }}>
-      <Canvas camera={{ position: [0, 0, 0], fov: 50 }}>
-        {/* 1. Lighting */}
-        <ambientLight intensity={0.5} />
-        <Environment preset="sunset" /> 
+    <div style={{ width: '100vw', height: '100vh', background: '#000' }}>
+      <Canvas 
+        gl={{ antialias: false }} // Post-processing handles AA usually
+        camera={{ position: [0, 0, 10], fov: 45 }}
+      >
+        <Suspense fallback={null}>
+          <ambientLight intensity={0.5} />
+          {/* Sunset adds nice warm directional light */}
+          <Environment preset="sunset" />
+          
+          <ScrollControls pages={10} damping={0.2}>
+            {/* The Camera Logic */}
+            <CameraRig />
+            
+            {/* The Content */}
+            <group>
+               <Stem />
+               <FlowerVine />
+            </group>
+            
+          </ScrollControls>
 
-        {/* 2. Controls & Interaction */}
-        <ScrollControls pages={5} damping={0.2}>
-          <CameraRig />
-          
-          {/* 3. The Content */}
-          <FlowerField />
-          
-          {/* 4. Post Processing */}
+          {/* Cinematic Effects */}
           <EffectComposer>
-             <DepthOfField 
-               focusDistance={0} // Focus on camera
-               focalLength={0.02} // Shallow focus
-               bokehScale={2} // Blur intensity
-               height={480} 
-             />
+            <DepthOfField 
+              focusDistance={0} 
+              focalLength={0.02} 
+              bokehScale={2} 
+              height={480} 
+            />
           </EffectComposer>
-        </ScrollControls>
+        </Suspense>
       </Canvas>
     </div>
   )
