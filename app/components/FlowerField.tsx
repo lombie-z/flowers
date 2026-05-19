@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import CustomShaderMaterial from 'three-custom-shader-material'
 
-const COUNT = 1000
+const COUNT = 400
 
 // --- 1. DATA GENERATION (Unchanged) ---
 function generateParticleData() {
@@ -14,7 +14,16 @@ function generateParticleData() {
   for (let i = 0; i < COUNT; i++) {
     const x = (Math.random() - 0.5) * 20
     const y = (Math.random() - 0.5) * 20
-    const z = -Math.random() * 80
+    const r = Math.random()
+    // Sparse early, dense after roses (section 2)
+    let z: number
+    if (r < 0.07) {
+      z = -Math.random() * 32          // sections 0-1: very sparse
+    } else if (r < 0.20) {
+      z = -32 - Math.random() * 16     // section 2: building up
+    } else {
+      z = -48 - Math.random() * 32     // sections 3-4: dense
+    }
     const scale = 0.5 + Math.random() * 0.5
     // Add random rotations for variety
     const rotationX = Math.random() * Math.PI * 2

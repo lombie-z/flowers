@@ -24,3 +24,33 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.rozsa-text {
+  font-size: clamp(4rem, 15vw, 12rem);
+  font-family: var(--font-rock-3d), cursive;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  background: linear-gradient(
+    90deg,
+    #1a2d44,
+    #2d1a44,
+    #1a4444,
+    #44331a,
+    #1a2d44
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: iridescent 6s ease-in-out infinite;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+@keyframes iridescent {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
