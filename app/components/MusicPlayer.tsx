@@ -11,6 +11,11 @@ const SONGS = [
   { src: '/audio/good-talk.mp3', title: 'Good Talk' },
 ]
 
+const FFT_SIZE = 2048
+const BEAT_COOLDOWN_MS = 180
+const BEAT_THRESHOLD_MULT = 1.4
+const FLUX_HISTORY_SIZE = 50
+
 function lerp(a: number, b: number, t: number) {
   return a + (b - a) * t
 }
@@ -20,22 +25,52 @@ export function MusicPlayer() {
   const [songIndex, setSongIndex] = useState(0)
   const [barHeights, setBarHeights] = useState([0.3, 0.3, 0.3, 0.3, 0.3])
   const audiosRef = useRef<HTMLAudioElement[]>([])
+  const gainsRef = useRef<GainNode[]>([])
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const freqDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null)
+  const fluxHistoryRef = useRef<number[]>([])
+  const lastBeatRef = useRef(0)
   const playingRef = useRef(false)
   const indexRef = useRef(0)
+  const bassRangeRef = useRef({ start: 0, end: 0 })
 
   useEffect(() => {
+    const ctx = new AudioContext()
+    const analyser = ctx.createAnalyser()
+    analyser.fftSize = FFT_SIZE
+    analyser.smoothingTimeConstant = 0.4
+    analyser.connect(ctx.destination)
+
+    audioCtxRef.current = ctx
+    analyserRef.current = analyser
+    freqDataRef.current = new Uint8Array(analyser.frequencyBinCount)
+
+    const sr = ctx.sampleRate
+    bassRangeRef.current = {
+      start: Math.floor(60 * FFT_SIZE / sr),
+      end: Math.floor(200 * FFT_SIZE / sr),
+    }
+
     audiosRef.current = SONGS.map(song => {
       const audio = new Audio(song.src)
       audio.loop = true
       audio.preload = 'auto'
-      audio.volume = 0
+      audio.crossOrigin = 'anonymous'
+
+      const source = ctx.createMediaElementSource(audio)
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      source.connect(gain)
+      gain.connect(analyser)
+      gainsRef.current.push(gain)
+
       return audio
     })
+
     return () => {
-      audiosRef.current.forEach(a => {
-        a.pause()
-        a.src = ''
-      })
+      audiosRef.current.forEach(a => { a.pause(); a.src = '' })
+      ctx.close()
     }
   }, [])
 
@@ -58,17 +93,61 @@ export function MusicPlayer() {
         }
       }
 
-      audiosRef.current.forEach((audio, i) => {
+      // Crossfade via GainNodes
+      gainsRef.current.forEach((gain, i) => {
+        const audio = audiosRef.current[i]
+        if (!gain || !audio) return
         const target = (i === indexRef.current && playingRef.current) ? 1 : 0
-        audio.volume = Math.max(0, Math.min(1, lerp(audio.volume, target, 0.06)))
+        gain.gain.value = Math.max(0, Math.min(1, lerp(gain.gain.value, target, 0.06)))
         if (target > 0 && audio.paused && playingRef.current) {
           audio.play().catch(() => {})
         }
-        if (audio.volume < 0.005 && !audio.paused && target === 0) {
+        if (gain.gain.value < 0.005 && !audio.paused && target === 0) {
           audio.pause()
-          audio.volume = 0
+          gain.gain.value = 0
         }
       })
+
+      // Beat detection
+      const analyser = analyserRef.current
+      const freqData = freqDataRef.current
+      if (analyser && freqData && playingRef.current) {
+        analyser.getByteFrequencyData(freqData)
+
+        const { start, end } = bassRangeRef.current
+        let bassEnergy = 0
+        for (let i = start; i <= end; i++) {
+          bassEnergy += freqData[i]
+        }
+        const binCount = end - start + 1
+        const normalized = bassEnergy / (binCount * 255)
+
+        scrollState.beatIntensity = lerp(scrollState.beatIntensity, normalized, 0.25)
+
+        const history = fluxHistoryRef.current
+        history.push(normalized)
+        if (history.length > FLUX_HISTORY_SIZE) history.shift()
+
+        if (history.length > 10) {
+          const mean = history.reduce((a, b) => a + b) / history.length
+          const variance = history.reduce((a, b) => a + (b - mean) ** 2, 0) / history.length
+          const threshold = mean + Math.sqrt(variance) * BEAT_THRESHOLD_MULT
+
+          const now = performance.now()
+          if (normalized > threshold && now - lastBeatRef.current > BEAT_COOLDOWN_MS) {
+            lastBeatRef.current = now
+            scrollState.beatPulse = Math.min(1, (normalized - mean) / (1 - mean + 0.01))
+          }
+        }
+      }
+
+      // Decay beat pulse
+      scrollState.beatPulse *= 0.88
+
+      if (!playingRef.current) {
+        scrollState.beatIntensity *= 0.95
+        scrollState.beatPulse *= 0.9
+      }
 
       rafId = requestAnimationFrame(tick)
     }
@@ -82,19 +161,25 @@ export function MusicPlayer() {
       return
     }
     const id = setInterval(() => {
-      setBarHeights(Array.from({ length: 5 }, () => 0.2 + Math.random() * 0.8))
+      const pulse = scrollState.beatPulse
+      setBarHeights(Array.from({ length: 5 }, () =>
+        0.2 + Math.random() * 0.5 + pulse * 0.5
+      ))
     }, 120)
     return () => clearInterval(id)
   }, [isPlaying])
 
   const toggle = useCallback(() => {
+    if (audioCtxRef.current?.state === 'suspended') {
+      audioCtxRef.current.resume()
+    }
     const next = !playingRef.current
     playingRef.current = next
     scrollState.isPlaying = next
     setIsPlaying(next)
     if (next) {
       const audio = audiosRef.current[indexRef.current]
-      audio.volume = 1
+      gainsRef.current[indexRef.current].gain.value = 1
       audio.play().catch(() => {})
     } else {
       audiosRef.current.forEach(a => a.pause())

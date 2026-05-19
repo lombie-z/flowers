@@ -140,12 +140,21 @@ function generateCurve() {
 }
 
 const vertexShader = /* glsl */ `
+  uniform float uBeatPulse;
+  uniform float uTime;
   varying float vWorldZ;
   varying vec2 vUv;
 
   void main() {
     vUv = uv;
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vec3 pos = position;
+
+    // Jagged displacement on beat — high-frequency sine spikes
+    float jag = uBeatPulse * sin(pos.z * 25.0 + uTime * 8.0) * 0.1;
+    pos.x += jag;
+    pos.y += jag * 0.6;
+
+    vec4 worldPos = modelMatrix * vec4(pos, 1.0);
     vWorldZ = worldPos.z;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
@@ -157,6 +166,7 @@ const fragmentShader = /* glsl */ `
   uniform float uTime;
   uniform float uPlaying;
   uniform float uStartup;
+  uniform float uBeatPulse;
 
   varying float vWorldZ;
   varying vec2 vUv;
@@ -190,10 +200,12 @@ const fragmentShader = /* glsl */ `
     // Music pulse — gentle travelling wave when playing
     float pulse = 1.0 + uPlaying * sin(uTime * 3.0 + vWorldZ * 1.2) * 0.25;
 
-    float alpha = revealFade * radial * shimmer * pulse * geoEndFade * 1.0;
+    float beatFlash = 1.0 + uBeatPulse * 0.8;
+
+    float alpha = revealFade * radial * shimmer * pulse * geoEndFade * 1.0 * beatFlash;
     if (alpha < 0.005) discard;
 
-    gl_FragColor = vec4(uColor * 2.5, alpha);
+    gl_FragColor = vec4(uColor * 2.5 * beatFlash, alpha);
   }
 `
 
@@ -213,6 +225,7 @@ export function LightThread() {
         uTime: { value: 0 },
         uPlaying: { value: 0 },
         uStartup: { value: 0 },
+        uBeatPulse: { value: 0 },
       },
       transparent: true,
       blending: THREE.AdditiveBlending,
@@ -238,6 +251,8 @@ export function LightThread() {
       scrollState.isPlaying ? 1.0 : 0.0,
       0.05,
     )
+
+    u.uBeatPulse.value = scrollState.beatPulse
 
     getSectionColor(scrollState.offset, tmpColor)
     u.uColor.value.lerp(tmpColor, 0.06)

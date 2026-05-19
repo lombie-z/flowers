@@ -26,15 +26,15 @@ const GRADIENT_STOPS: { offset: number; top: RGB; bottom: RGB }[] = [
   { offset: 1.0,  top: [13, 27, 42],    bottom: [10, 14, 26] },
 ]
 
-function lerpRGB(a: RGB, b: RGB, t: number): string {
-  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(a[1] + (b[1] - a[1]) * t)},${Math.round(a[2] + (b[2] - a[2]) * t)})`
+function lerpRGB(a: RGB, b: RGB, t: number, boost: number = 0): string {
+  return `rgb(${Math.min(255, Math.round(a[0] + (b[0] - a[0]) * t + boost))},${Math.min(255, Math.round(a[1] + (b[1] - a[1]) * t + boost))},${Math.min(255, Math.round(a[2] + (b[2] - a[2]) * t + boost))})`
 }
 
-function getBackground(offset: number): string {
+function getBackground(offset: number, beatBoost: number = 0): string {
   for (let i = 0; i < GRADIENT_STOPS.length - 1; i++) {
     if (offset <= GRADIENT_STOPS[i + 1].offset) {
       const t = (offset - GRADIENT_STOPS[i].offset) / (GRADIENT_STOPS[i + 1].offset - GRADIENT_STOPS[i].offset)
-      return `linear-gradient(to bottom, ${lerpRGB(GRADIENT_STOPS[i].top, GRADIENT_STOPS[i + 1].top, t)}, ${lerpRGB(GRADIENT_STOPS[i].bottom, GRADIENT_STOPS[i + 1].bottom, t)})`
+      return `linear-gradient(to bottom, ${lerpRGB(GRADIENT_STOPS[i].top, GRADIENT_STOPS[i + 1].top, t, beatBoost)}, ${lerpRGB(GRADIENT_STOPS[i].bottom, GRADIENT_STOPS[i + 1].bottom, t, beatBoost)})`
     }
   }
   const last = GRADIENT_STOPS[GRADIENT_STOPS.length - 1]
@@ -48,7 +48,8 @@ export default function Page() {
     let rafId: number
     function tick() {
       if (containerRef.current) {
-        containerRef.current.style.background = getBackground(scrollState.offset)
+        const beatBoost = scrollState.beatPulse * 35
+        containerRef.current.style.background = getBackground(scrollState.offset, beatBoost)
       }
       rafId = requestAnimationFrame(tick)
     }

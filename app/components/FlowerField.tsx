@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import CustomShaderMaterial from 'three-custom-shader-material'
+import { scrollState } from '@/app/lib/scrollState'
 
 const COUNT = 400
 
@@ -39,21 +40,17 @@ function generateParticleData() {
 // --- 2. SHADER (Unchanged) ---
 const vertexShader = `
   uniform float uTime;
+  uniform float uBeatPulse;
   attribute float aRandom;
 
   void main() {
-    // csm_Position is the local vertex position
-    
-    // SAFE MODE:
-    // 1. No Rotation (This usually causes the "crystalline" shredding if pivots are off)
-    // 2. Gentle Floating only
-    
     float floatSpeed = 1.0;
-    float floatHeight = 0.2; // Reduced intensity
-    
-    // Only move up/down relative to the random offset
+    float floatHeight = 0.2;
     float yOffset = sin(uTime * floatSpeed + aRandom * 100.0) * floatHeight;
     csm_Position.y += yOffset;
+
+    float beatScale = 1.0 + uBeatPulse * 0.2;
+    csm_Position *= beatScale;
   }
 `
 
@@ -110,10 +107,10 @@ export function FlowerField() {
 
   // --- 6. ANIMATION LOOP ---
   useFrame((state) => {
-    // Update uTime for ALL materials
     materialRefs.current.forEach((mat) => {
-      if (mat && mat.uniforms?.uTime) {
-        mat.uniforms.uTime.value = state.clock.elapsedTime
+      if (mat?.uniforms) {
+        if (mat.uniforms.uTime) mat.uniforms.uTime.value = state.clock.elapsedTime
+        if (mat.uniforms.uBeatPulse) mat.uniforms.uBeatPulse.value = scrollState.beatPulse
       }
     })
   })
@@ -134,6 +131,7 @@ export function FlowerField() {
   // 1. Keep uTime in uniforms
   uniforms={{
     uTime: { value: 0 },
+    uBeatPulse: { value: 0 },
   }}
   // 2. PASS TEXTURES AS DIRECT PROPS
   // This tells Three.js: "Turn on texture mapping logic!"

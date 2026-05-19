@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import CustomShaderMaterial from 'three-custom-shader-material'
+import { scrollState } from '@/app/lib/scrollState'
 
 const SECTION_WIDTH = 16
 
@@ -11,20 +12,21 @@ const vertexShader = `
   uniform float uTime;
   uniform float uCameraZ;
   uniform float uSectionCenterZ;
+  uniform float uBeatPulse;
   attribute float aRandom;
   varying float vFade;
 
   void main() {
-    // Floating animation
     float floatSpeed = 1.0;
     float floatHeight = 0.2;
     float yOffset = sin(uTime * floatSpeed + aRandom * 100.0) * floatHeight;
     csm_Position.y += yOffset;
 
-    // Section-based visibility fading
+    float beatScale = 1.0 + uBeatPulse * 0.2;
+    csm_Position *= beatScale;
+
     float instanceZ = instanceMatrix[3][2];
     float dist = abs(instanceZ - uCameraZ);
-    // Fade: fully visible within 1.2 sections, fully gone beyond 2.2 sections
     vFade = 1.0 - smoothstep(${SECTION_WIDTH.toFixed(1)} * 0.8, ${SECTION_WIDTH.toFixed(1)} * 2.5, dist);
   }
 `
@@ -129,6 +131,9 @@ function SectionInstances({ meshParts, sectionIndex, count = 100, baseScale = 1.
         if (mat.uniforms.uCameraZ) {
           mat.uniforms.uCameraZ.value = cameraZ
         }
+        if (mat.uniforms.uBeatPulse) {
+          mat.uniforms.uBeatPulse.value = scrollState.beatPulse
+        }
       }
     })
   })
@@ -151,6 +156,7 @@ function SectionInstances({ meshParts, sectionIndex, count = 100, baseScale = 1.
               uTime: { value: 0 },
               uCameraZ: { value: 0 },
               uSectionCenterZ: { value: sectionCenterZ },
+              uBeatPulse: { value: 0 },
             }}
             map={part.colorOverride ? null : part.material.map}
             color={part.colorOverride ?? part.material.color}
