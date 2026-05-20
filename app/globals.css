@@ -25,6 +25,10 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+html[style*="cursor: pointer"], html[style*="cursor: pointer"] * {
+  cursor: pointer !important;
+}
+
 .volume-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -61,12 +65,63 @@ body {
   border-radius: 2px;
 }
 
-.rozsa-text {
-  font-size: clamp(4rem, 15vw, 12rem);
-  font-family: var(--font-rock-3d), cursive;
+.bg-r-logo {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'UnifrakturMaguntia', serif;
+  font-size: clamp(30rem, 55vw, 50rem);
+  line-height: 0.75;
+  color: rgba(255, 255, 255, 0.04);
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+@font-face {
+  font-family: 'UnifrakturMaguntia';
+  src: url('/fonts/UnifrakturMaguntia-Regular.ttf') format('truetype');
   font-weight: 400;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
+  font-style: normal;
+  font-display: swap;
+}
+
+.rozsa-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.rozsa-fur-card {
+  position: relative;
+  padding: 40px 60px;
+  overflow: hidden;
+  background: rgba(30, 20, 40, 0.8);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.rozsa-fur-texture {
+  position: absolute;
+  inset: 0;
+  background-image: url('/fur-texture.jpg');
+  background-size: cover;
+  background-position: center;
+  mix-blend-mode: screen;
+  opacity: 0.35;
+  z-index: 0;
+}
+
+.rozsa-title {
+  position: relative;
+  z-index: 1;
+  font-family: 'UnifrakturMaguntia', serif;
+  font-size: clamp(3rem, 12vw, 8rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
   background: linear-gradient(
     90deg,
     #1a2d44,
@@ -81,8 +136,51 @@ body {
   background-clip: text;
   animation: iridescent 6s ease-in-out infinite;
   margin: 0;
-  padding: 0;
   user-select: none;
+}
+
+.rozsa-socials {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.rozsa-social-link {
+  color: rgba(255, 255, 255, 0.35);
+  transition: color 0.2s ease, transform 0.15s ease;
+  text-decoration: none;
+  display: flex;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.rozsa-social-link:hover {
+  color: rgba(255, 255, 255, 0.8);
+  transform: scale(1.15);
+}
+
+.rozsa-social-link:active {
+  transform: scale(0.95);
+}
+
+.rozsa-cube-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  padding: 6px;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  filter: drop-shadow(0 2px 6px rgba(127, 29, 29, 0.4));
+}
+
+.rozsa-cube-link:hover {
+  transform: scale(1.2) rotate(5deg);
+  filter: drop-shadow(0 4px 16px rgba(127, 29, 29, 0.7));
+}
+
+.rozsa-cube-link:active {
+  transform: scale(0.95);
 }
 
 @keyframes beat-ripple {
@@ -98,11 +196,84 @@ body {
 
 /* ── Music Player ────────────────────────────────────── */
 
-.mp-card {
+.mp-wrapper {
   position: fixed;
   bottom: 24px;
   right: 24px;
   z-index: 50;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mp-links-tray {
+  width: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  padding: 0 18px;
+  transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+}
+
+.mp-links-open {
+  max-height: 50px;
+  opacity: 1;
+  padding: 12px 18px;
+}
+
+.mp-link-icon {
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.15s ease;
+}
+
+.mp-link-icon:hover {
+  color: rgba(255, 255, 255, 0.85);
+  transform: scale(1.15);
+}
+
+.mp-link-cube {
+  filter: drop-shadow(0 1px 4px rgba(127, 29, 29, 0.3));
+}
+
+.mp-link-cube:hover {
+  filter: drop-shadow(0 2px 8px rgba(127, 29, 29, 0.6));
+  color: unset;
+}
+
+.mp-links-tab {
+  width: 260px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 5px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  outline: none;
+  transition: color 0.2s ease, border-radius 0.3s ease;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.mp-links-tab:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.mp-card {
   width: 260px;
   border-radius: 24px;
   background: rgba(0, 0, 0, 0.65);
@@ -117,15 +288,6 @@ body {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
 }
 
-.mp-cover-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 160px;
-  pointer-events: none;
-  transition: background 0.8s ease;
-}
 
 /* ── Disc area (top of card) ──────────────────────────── */
 
@@ -135,6 +297,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: background 0.8s ease;
   padding: 24px 18px 16px;
   gap: 12px;
 }

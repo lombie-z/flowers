@@ -6,7 +6,7 @@ import { scrollState } from '@/app/lib/scrollState'
 
 const SECTION_COLORS = [
   new THREE.Color('#E0E0E8'),
-  new THREE.Color('#E53935'),
+  new THREE.Color('#333333'),
   new THREE.Color('#EC407A'),
   new THREE.Color('#FF7043'),
   new THREE.Color('#AB47BC'),
@@ -17,7 +17,9 @@ function getSectionColor(offset: number, target: THREE.Color) {
   const idx = Math.max(0, Math.min(Math.floor(raw), 4))
   const nextIdx = Math.min(idx + 1, 4)
   const t = raw - idx
-  target.copy(SECTION_COLORS[idx]).lerp(SECTION_COLORS[nextIdx], t)
+  // Hold color for 70% of each section, transition in the last 30%
+  const blendT = Math.max(0, (t - 0.7) / 0.3)
+  target.copy(SECTION_COLORS[idx]).lerp(SECTION_COLORS[nextIdx], blendT)
 }
 
 function organicXY(z: number): [number, number] {
@@ -307,11 +309,13 @@ export function LightThread() {
   useFrame((state, delta) => {
     const u = material.uniforms
     u.uCameraZ.value = state.camera.position.z
-    u.uTime.value += delta
 
-    if (u.uTime.value > 1.0) {
-      const rate = 0.005 + u.uStartup.value * 0.025
-      u.uStartup.value = THREE.MathUtils.lerp(u.uStartup.value, 1.0, rate)
+    if (scrollState.sceneReady) {
+      u.uTime.value += delta
+      if (u.uTime.value > 1.0) {
+        const rate = 0.005 + u.uStartup.value * 0.025
+        u.uStartup.value = THREE.MathUtils.lerp(u.uStartup.value, 1.0, rate)
+      }
     }
 
     u.uPlaying.value = THREE.MathUtils.lerp(

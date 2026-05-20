@@ -6,7 +6,7 @@ import { useGLTF } from '@react-three/drei'
 import CustomShaderMaterial from 'three-custom-shader-material'
 import { scrollState } from '@/app/lib/scrollState'
 
-const COUNT = 250
+const COUNT = 350
 const MODEL_COUNT = 5
 
 // ---------------------------------------------------------------------------
@@ -85,11 +85,15 @@ const vertexShader = `
   varying float vRipple;
 
   void main() {
-    float yOffset = sin(uTime * 1.0 + aRandom * 100.0) * 0.2;
-    csm_Position.y += yOffset;
-    csm_Position *= uFadeScale;
-
     vec3 instPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+
+    // Single unified sway — everything moves the same direction at once
+    float swayX = sin(uTime * 0.2) * 1.5;
+    float swayY = sin(uTime * 0.15) * 0.6;
+    csm_Position.x += swayX;
+    csm_Position.y += swayY;
+
+    csm_Position *= uFadeScale;
     float dist = distance(instPos, uRippleOrigin);
     float totalRipple = 0.0;
     for (int i = 0; i < 12; i++) {
@@ -109,12 +113,17 @@ const vertexShader = `
 const fragmentShader = `
   uniform vec3 uSectionColor;
   uniform float uFadeOpacity;
+  uniform float uTransitionBlur;
   varying float vRipple;
 
   void main() {
     if (uFadeOpacity < 0.01) discard;
+
+    // During transition, wash out to a flat color (pure blur effect)
+    vec3 avgColor = csm_DiffuseColor.rgb * 0.5 + uSectionColor * 0.5;
+    csm_DiffuseColor.rgb = mix(csm_DiffuseColor.rgb, avgColor, uTransitionBlur);
     csm_DiffuseColor.a *= uFadeOpacity;
-    csm_Emissive = uSectionColor * vRipple * 2.5;
+    csm_Emissive = mix(uSectionColor * vRipple * 2.5, avgColor * 0.3, uTransitionBlur);
   }
 `
 
@@ -210,6 +219,9 @@ function ModelLayer({
         const c = scrollState.sectionColor
         mat.uniforms.uSectionColor.value.set(c[0], c[1], c[2])
       }
+      if (mat.uniforms.uTransitionBlur) {
+        mat.uniforms.uTransitionBlur.value = scrollState.transitionBlur
+      }
     })
   })
 
@@ -229,12 +241,13 @@ function ModelLayer({
             fragmentShader={fragmentShader}
             uniforms={{
               uTime: { value: 0 },
-              uFadeScale: { value: 1 },
-              uFadeOpacity: { value: 1 },
+              uFadeScale: { value: 0 },
+              uFadeOpacity: { value: 0 },
               uRippleAges: { value: [99,99,99,99,99,99,99,99,99,99,99,99] },
               uRippleIntensities: { value: [1,1,1,1,1,1,1,1,1,1,1,1] },
               uRippleOrigin: { value: new THREE.Vector3(8, 0, 0) },
               uSectionColor: { value: new THREE.Vector3(1, 0.84, 0.31) },
+              uTransitionBlur: { value: 0 },
             }}
             map={part.material.map}
             color={part.material.color}
@@ -257,9 +270,9 @@ export function UnifiedModelField() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const desertLily = useGLTF('/DesertLily.glb') as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const deadTree = useGLTF('/DeadTree.glb') as any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rose = useGLTF('/Rose.glb') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tulip = useGLTF('/Tulip.glb') as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const flower = useGLTF('/Flower.glb') as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -286,25 +299,25 @@ export function UnifiedModelField() {
 
   // 5 models, one per song section:
   // 0: Desert Lily (Out is Through)
-  // 1: Dead Tree (Is Your Heart Big Enough)
-  // 2: Rose (Sincerity)
+  // 1: Leaf (Is Your Heart Big Enough)
+  // 2: Tulip (Sincerity)
   // 3: Hibiscus (Where's My Dignity Now)
-  // 4: Leaf (Good Talk)
+  // 4: Rose (Good Talk)
 
   const desertLilyParts = useMemo<MeshPart[]>(() => [{
     geometry: desertLily.nodes.DeserLily_Mesh.geometry,
     material: desertLily.materials.DeserLily_Mat,
   }], [desertLily])
 
-  const deadTreeParts = useMemo<MeshPart[]>(() => [{
-    geometry: deadTree.nodes.dead_tree.geometry,
-    material: deadTree.materials.None,
-  }], [deadTree])
-
   const roseParts = useMemo<MeshPart[]>(() => {
-    const croppedGeom = cropAndCenterGeometry(rose.nodes.rose.geometry, -0.35)
-    return [{ geometry: croppedGeom, material: rose.materials.None }]
+    const cropped = cropAndCenterGeometry(rose.nodes.rose.geometry, -0.8)
+    return [{ geometry: cropped, material: rose.materials.None }]
   }, [rose])
+
+  const tulipParts = useMemo<MeshPart[]>(() => [{
+    geometry: tulip.nodes.tulip.geometry,
+    material: tulip.materials.None,
+  }], [tulip])
 
   const hibiscusParts = useMemo<MeshPart[]>(() => [
     { geometry: flower.nodes['hibiscus_flower-Mesh'].geometry, material: flower.materials.red },
@@ -317,25 +330,33 @@ export function UnifiedModelField() {
     material: leaf.materials.None,
   }], [leaf])
 
-  const baseScales = useMemo(() => [0.46, 0.85, 2.0, 0.7, 1.3], [])
+  const baseScales = useMemo(() => [0.46, 1.3, 0.8, 0.7, 1.2], [])
 
   const allParts = useMemo(() => [
     desertLilyParts,
-    deadTreeParts,
-    roseParts,
-    hibiscusParts,
     leafParts,
-  ], [desertLilyParts, deadTreeParts, roseParts, hibiscusParts, leafParts])
+    tulipParts,
+    hibiscusParts,
+    roseParts,
+  ], [desertLilyParts, leafParts, tulipParts, hibiscusParts, roseParts])
+
+  const startupRef = useRef(0)
 
   // Crossfade logic — runs every frame, mutates refs only
-  useFrame(() => {
-    const scrollProgress = Math.min(scrollState.offset * 5, 4.999)
+  useFrame((state, delta) => {
+    if (scrollState.sceneReady) {
+      startupRef.current = Math.min(1, startupRef.current + delta * 0.5)
+    }
+    const offset = scrollState.offset || 0
+    const scrollProgress = Math.min(Math.max(offset, 0) * 5, 4.999)
     const section = Math.min(Math.floor(scrollProgress), 4)
     const sectionT = scrollProgress - section
 
     const outgoing = section
     const incoming = Math.min(section + 1, 4)
     const fadeFactor = outgoing === incoming ? 0 : smoothstep(sectionT, 0.2, 0.6)
+    const startupBlur = 1 - startupRef.current
+    scrollState.transitionBlur = Math.max(Math.sin(fadeFactor * Math.PI), startupBlur)
 
     for (let i = 0; i < MODEL_COUNT; i++) {
       if (i === outgoing && i === incoming) {
@@ -378,7 +399,7 @@ export function UnifiedModelField() {
 
 // Preload all models
 useGLTF.preload('/DesertLily.glb')
-useGLTF.preload('/DeadTree.glb')
 useGLTF.preload('/Rose.glb')
+useGLTF.preload('/Tulip.glb')
 useGLTF.preload('/Flower.glb')
 useGLTF.preload('/Leaf.glb')

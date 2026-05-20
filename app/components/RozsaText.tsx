@@ -36,7 +36,10 @@ export function RozsaText() {
         opacity: 0,
       }}
     >
-      <h1 className="rozsa-text">ROZSA</h1>
+      <div className="rozsa-fur-card">
+        <div className="rozsa-fur-texture" />
+        <h1 className="rozsa-title">rozsa</h1>
+      </div>
     </div>
   )
 }

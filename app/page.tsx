@@ -10,6 +10,7 @@ import { LightThread } from '@/app/components/LightThread'
 import { MusicPlayer } from '@/app/components/MusicPlayer'
 import { AuroraBackground } from '@/app/components/AuroraBackground'
 import { RozsaText } from '@/app/components/RozsaText'
+import { LoadingScreen } from '@/app/components/LoadingScreen'
 import { scrollState } from '@/app/lib/scrollState'
 
 type RGB = [number, number, number]
@@ -19,12 +20,12 @@ const GRADIENT_STOPS: { offset: number; top: RGB; bottom: RGB }[] = [
   { offset: 0.0,  top: [230, 230, 240], bottom: [215, 220, 235] },
   { offset: 0.16, top: [225, 225, 235], bottom: [210, 215, 230] },
   // Transition
-  { offset: 0.22, top: [200, 180, 185], bottom: [190, 160, 170] },
-  // Section 1: Red (Is Your Heart Big Enough, 20-40%)
-  { offset: 0.25, top: [160, 45, 55],   bottom: [130, 35, 50] },
-  { offset: 0.36, top: [155, 40, 50],   bottom: [125, 30, 45] },
+  { offset: 0.22, top: [100, 100, 110], bottom: [50, 50, 60] },
+  // Section 1: Black (Is Your Heart Big Enough, 20-40%)
+  { offset: 0.25, top: [25, 25, 30],    bottom: [15, 15, 20] },
+  { offset: 0.36, top: [20, 20, 25],    bottom: [12, 12, 18] },
   // Transition
-  { offset: 0.42, top: [170, 60, 90],   bottom: [150, 50, 80] },
+  { offset: 0.42, top: [80, 30, 50],    bottom: [100, 40, 60] },
   // Section 2: Pink (Sincerity, 40-60%)
   { offset: 0.45, top: [200, 70, 110],  bottom: [180, 55, 95] },
   { offset: 0.56, top: [195, 65, 105],  bottom: [175, 50, 90] },
@@ -83,8 +84,9 @@ export default function Page() {
       }}
     >
       <Canvas camera={{ position: [0, 0, 0], fov: 50 }} style={{ position: 'relative', zIndex: 2 }}>
-        <ambientLight intensity={0.5} />
-        <Environment preset="sunset" />
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[5, 8, 3]} intensity={1.0} color="#ffe0c0" />
+        <directionalLight position={[-3, 2, -5]} intensity={0.3} color="#c0d0ff" />
         <ScrollControls pages={5} damping={0.2}>
           <CameraRig />
           <Suspense fallback={null}>
@@ -97,6 +99,8 @@ export default function Page() {
           </EffectComposer>
         </ScrollControls>
       </Canvas>
+      <LoadingScreen />
+      <div className="bg-r-logo">r</div>
       <AuroraBackground />
       <MusicPlayer />
       <RozsaText />

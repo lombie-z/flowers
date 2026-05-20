@@ -5,7 +5,7 @@ import { scrollState } from '@/app/lib/scrollState'
 
 const SECTION_COLORS: [number, number, number][] = [
   [0.90, 0.90, 0.94],  // white / light
-  [0.63, 0.17, 0.22],  // deep red
+  [0.08, 0.08, 0.08],  // black
   [0.78, 0.27, 0.43],  // pink
   [0.86, 0.39, 0.18],  // sunset orange
   [0.16, 0.06, 0.24],  // dark purple
