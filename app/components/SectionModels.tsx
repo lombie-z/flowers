@@ -12,9 +12,13 @@ const vertexShader = `
   uniform float uTime;
   uniform float uCameraZ;
   uniform float uSectionCenterZ;
-  uniform float uBeatPulse;
+  uniform float uRippleAges[12];
+  uniform float uRippleIntensities[12];
+  uniform vec3 uRippleOrigin;
   attribute float aRandom;
   varying float vFade;
+  varying float vRipple;
+  varying float vRippleHue;
 
   void main() {
     float floatSpeed = 1.0;
@@ -22,8 +26,20 @@ const vertexShader = `
     float yOffset = sin(uTime * floatSpeed + aRandom * 100.0) * floatHeight;
     csm_Position.y += yOffset;
 
-    float beatScale = 1.0 + uBeatPulse * 0.2;
-    csm_Position *= beatScale;
+    vec3 instPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+    float rippleDist = distance(instPos, uRippleOrigin);
+    float totalRipple = 0.0;
+    for (int i = 0; i < 12; i++) {
+      float age = uRippleAges[i];
+      if (age < 12.0) {
+        float radius = age * 20.0;
+        float ring = smoothstep(radius - 3.5, radius - 0.3, rippleDist)
+                   * (1.0 - smoothstep(radius + 0.3, radius + 3.5, rippleDist));
+        float fade = max(0.0, 1.0 - age * 0.18);
+        totalRipple += ring * fade * uRippleIntensities[i];
+      }
+    }
+    vRipple = min(totalRipple, 1.5);
 
     float instanceZ = instanceMatrix[3][2];
     float dist = abs(instanceZ - uCameraZ);
@@ -32,11 +48,14 @@ const vertexShader = `
 `
 
 const fragmentShader = `
+  uniform vec3 uSectionColor;
   varying float vFade;
+  varying float vRipple;
 
   void main() {
     if (vFade < 0.01) discard;
     csm_DiffuseColor.a *= vFade;
+    csm_Emissive = uSectionColor * vRipple * 2.5;
   }
 `
 
@@ -131,8 +150,20 @@ function SectionInstances({ meshParts, sectionIndex, count = 100, baseScale = 1.
         if (mat.uniforms.uCameraZ) {
           mat.uniforms.uCameraZ.value = cameraZ
         }
-        if (mat.uniforms.uBeatPulse) {
-          mat.uniforms.uBeatPulse.value = scrollState.beatPulse
+        if (mat.uniforms.uRippleAges) {
+          const arr = mat.uniforms.uRippleAges.value
+          for (let j = 0; j < 12; j++) arr[j] = scrollState.rippleAges[j]
+        }
+        if (mat.uniforms.uRippleIntensities) {
+          const arr = mat.uniforms.uRippleIntensities.value
+          for (let j = 0; j < 12; j++) arr[j] = scrollState.rippleIntensities[j]
+        }
+        if (mat.uniforms.uSectionColor) {
+          const c = scrollState.sectionColor
+          mat.uniforms.uSectionColor.value.set(c[0], c[1], c[2])
+        }
+        if (mat.uniforms.uRippleOrigin) {
+          mat.uniforms.uRippleOrigin.value.set(8, 0, cameraZ)
         }
       }
     })
@@ -156,7 +187,10 @@ function SectionInstances({ meshParts, sectionIndex, count = 100, baseScale = 1.
               uTime: { value: 0 },
               uCameraZ: { value: 0 },
               uSectionCenterZ: { value: sectionCenterZ },
-              uBeatPulse: { value: 0 },
+              uRippleAges: { value: [99,99,99,99,99,99,99,99,99,99,99,99] },
+              uRippleIntensities: { value: [1,1,1,1,1,1,1,1,1,1,1,1] },
+              uSectionColor: { value: new THREE.Vector3(1, 0.84, 0.31) },
+              uRippleOrigin: { value: new THREE.Vector3(8, 0, 0) },
             }}
             map={part.colorOverride ? null : part.material.map}
             color={part.colorOverride ?? part.material.color}
@@ -172,30 +206,32 @@ function SectionInstances({ meshParts, sectionIndex, count = 100, baseScale = 1.
   )
 }
 
-/**
- * Crop rose stem: flatten all vertices below yCutoff to yCutoff,
- * then recenter the geometry at origin.
- */
 function cropAndCenterGeometry(geometry: THREE.BufferGeometry, yCutoff: number): THREE.BufferGeometry {
   const geom = geometry.clone()
-  const posAttr = geom.getAttribute('position')
-  const positions = posAttr.array as Float32Array
+  const positions = geom.getAttribute('position').array as Float32Array
+  const index = geom.index
 
-  // Flatten vertices below cutoff
-  for (let i = 0; i < positions.length; i += 3) {
-    if (positions[i + 1] < yCutoff) {
-      positions[i + 1] = yCutoff
+  if (index) {
+    const indices = index.array
+    const kept: number[] = []
+    for (let i = 0; i < indices.length; i += 3) {
+      const ya = positions[indices[i] * 3 + 1]
+      const yb = positions[indices[i + 1] * 3 + 1]
+      const yc = positions[indices[i + 2] * 3 + 1]
+      if (ya >= yCutoff && yb >= yCutoff && yc >= yCutoff) {
+        kept.push(indices[i], indices[i + 1], indices[i + 2])
+      }
     }
+    geom.setIndex(kept)
   }
-  posAttr.needsUpdate = true
 
-  // Recenter at origin
   geom.computeBoundingBox()
   const bb = geom.boundingBox!
-  const centerX = (bb.min.x + bb.max.x) / 2
-  const centerY = (bb.min.y + bb.max.y) / 2
-  const centerZ = (bb.min.z + bb.max.z) / 2
-  geom.translate(-centerX, -centerY, -centerZ)
+  geom.translate(
+    -(bb.min.x + bb.max.x) / 2,
+    -(bb.min.y + bb.max.y) / 2,
+    -(bb.min.z + bb.max.z) / 2,
+  )
 
   return geom
 }
@@ -235,7 +271,7 @@ export function SectionModels() {
 
   // Rose: crop stem at Y < -0.4, recenter. After crop max dim ~1.0, baseScale 2.0 => 1.0 * 0.55 * 2.0 ~ 1.1
   const roseParts = useMemo<MeshPart[]>(() => {
-    const croppedGeom = cropAndCenterGeometry(rose.nodes.rose.geometry, -0.15)
+    const croppedGeom = cropAndCenterGeometry(rose.nodes.rose.geometry, -0.35)
     return [{ geometry: croppedGeom, material: rose.materials.None }]
   }, [rose])
 

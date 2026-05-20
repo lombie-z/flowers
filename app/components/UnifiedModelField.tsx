@@ -1,0 +1,384 @@
+'use client'
+import { useRef, useMemo, useLayoutEffect } from 'react'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
+import { useGLTF } from '@react-three/drei'
+import CustomShaderMaterial from 'three-custom-shader-material'
+import { scrollState } from '@/app/lib/scrollState'
+
+const COUNT = 250
+const MODEL_COUNT = 5
+
+// ---------------------------------------------------------------------------
+// Shared position data — 250 instances, uniform random distribution
+// ---------------------------------------------------------------------------
+interface ParticleData {
+  x: number; y: number; z: number
+  scale: number
+  rotationX: number; rotationY: number; rotationZ: number
+}
+
+function generateSharedPositions() {
+  const particles: ParticleData[] = []
+  const randomData = new Float32Array(COUNT)
+
+  for (let i = 0; i < COUNT; i++) {
+    const x = (Math.random() - 0.5) * 20
+    const y = (Math.random() - 0.5) * 20
+    const z = -Math.random() * 80 // uniform Z in [0, -80]
+    const scale = 0.3 + Math.random() * 0.5
+
+    particles.push({
+      x, y, z, scale,
+      rotationX: Math.random() * Math.PI * 2,
+      rotationY: Math.random() * Math.PI * 2,
+      rotationZ: Math.random() * Math.PI * 2,
+    })
+    randomData[i] = Math.random()
+  }
+  return { particles, randomData }
+}
+
+// ---------------------------------------------------------------------------
+// Geometry helpers (ported from SectionModels)
+// ---------------------------------------------------------------------------
+function cropAndCenterGeometry(geometry: THREE.BufferGeometry, yCutoff: number): THREE.BufferGeometry {
+  const geom = geometry.clone()
+  const positions = geom.getAttribute('position').array as Float32Array
+  const index = geom.index
+
+  if (index) {
+    const indices = index.array
+    const kept: number[] = []
+    for (let i = 0; i < indices.length; i += 3) {
+      const ya = positions[indices[i] * 3 + 1]
+      const yb = positions[indices[i + 1] * 3 + 1]
+      const yc = positions[indices[i + 2] * 3 + 1]
+      if (ya >= yCutoff && yb >= yCutoff && yc >= yCutoff) {
+        kept.push(indices[i], indices[i + 1], indices[i + 2])
+      }
+    }
+    geom.setIndex(kept)
+  }
+
+  geom.computeBoundingBox()
+  const bb = geom.boundingBox!
+  geom.translate(
+    -(bb.min.x + bb.max.x) / 2,
+    -(bb.min.y + bb.max.y) / 2,
+    -(bb.min.z + bb.max.z) / 2,
+  )
+
+  return geom
+}
+
+// ---------------------------------------------------------------------------
+// Shaders
+// ---------------------------------------------------------------------------
+const vertexShader = `
+  uniform float uTime;
+  uniform float uFadeScale;
+  uniform float uRippleAges[12];
+  uniform float uRippleIntensities[12];
+  uniform vec3 uRippleOrigin;
+  attribute float aRandom;
+  varying float vRipple;
+
+  void main() {
+    float yOffset = sin(uTime * 1.0 + aRandom * 100.0) * 0.2;
+    csm_Position.y += yOffset;
+    csm_Position *= uFadeScale;
+
+    vec3 instPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+    float dist = distance(instPos, uRippleOrigin);
+    float totalRipple = 0.0;
+    for (int i = 0; i < 12; i++) {
+      float age = uRippleAges[i];
+      if (age < 12.0) {
+        float radius = age * 20.0;
+        float ring = smoothstep(radius - 3.5, radius - 0.3, dist)
+                   * (1.0 - smoothstep(radius + 0.3, radius + 3.5, dist));
+        float fade = max(0.0, 1.0 - age * 0.18);
+        totalRipple += ring * fade * uRippleIntensities[i];
+      }
+    }
+    vRipple = min(totalRipple, 1.5);
+  }
+`
+
+const fragmentShader = `
+  uniform vec3 uSectionColor;
+  uniform float uFadeOpacity;
+  varying float vRipple;
+
+  void main() {
+    if (uFadeOpacity < 0.01) discard;
+    csm_DiffuseColor.a *= uFadeOpacity;
+    csm_Emissive = uSectionColor * vRipple * 2.5;
+  }
+`
+
+// ---------------------------------------------------------------------------
+// Smoothstep helper
+// ---------------------------------------------------------------------------
+function smoothstep(t: number, edge0: number, edge1: number): number {
+  const x = Math.max(0, Math.min(1, (t - edge0) / (edge1 - edge0)))
+  return x * x * (3 - 2 * x)
+}
+
+// ---------------------------------------------------------------------------
+// MeshPart interface
+// ---------------------------------------------------------------------------
+interface MeshPart {
+  geometry: THREE.BufferGeometry
+  material: THREE.MeshStandardMaterial
+}
+
+// ---------------------------------------------------------------------------
+// ModelLayer — renders one model type at all 250 shared positions
+// ---------------------------------------------------------------------------
+function ModelLayer({
+  meshParts,
+  baseScale,
+  particles,
+  randomData,
+  fadeScaleRef,
+  fadeOpacityRef,
+  visibleRef,
+}: {
+  meshParts: MeshPart[]
+  baseScale: number
+  particles: ParticleData[]
+  randomData: Float32Array
+  fadeScaleRef: React.MutableRefObject<number>
+  fadeOpacityRef: React.MutableRefObject<number>
+  visibleRef: React.MutableRefObject<boolean>
+}) {
+  const meshRefs = useRef<THREE.InstancedMesh[]>([])
+  const materialRefs = useRef<THREE.ShaderMaterial[]>([])
+  const groupRef = useRef<THREE.Group>(null)
+
+  // Clone geometries and inject aRandom attribute
+  const processedParts = useMemo(() => {
+    return meshParts.map(part => {
+      const geom = part.geometry.clone()
+      geom.setAttribute('aRandom', new THREE.InstancedBufferAttribute(randomData, 1))
+      return { ...part, geometry: geom }
+    })
+  }, [meshParts, randomData])
+
+  // Set instance matrices using shared positions
+  useLayoutEffect(() => {
+    const tempObject = new THREE.Object3D()
+    meshRefs.current.forEach(mesh => {
+      if (!mesh) return
+      particles.forEach((data, i) => {
+        tempObject.position.set(data.x, data.y, data.z)
+        tempObject.rotation.set(data.rotationX, data.rotationY, data.rotationZ)
+        const s = data.scale * baseScale
+        tempObject.scale.set(s, s, s)
+        tempObject.updateMatrix()
+        mesh.setMatrixAt(i, tempObject.matrix)
+      })
+      mesh.instanceMatrix.needsUpdate = true
+    })
+  }, [particles, baseScale])
+
+  // Per-frame uniform updates
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.visible = visibleRef.current
+    }
+
+    materialRefs.current.forEach(mat => {
+      if (!mat?.uniforms) return
+      if (mat.uniforms.uTime) mat.uniforms.uTime.value = state.clock.elapsedTime
+      if (mat.uniforms.uFadeScale) mat.uniforms.uFadeScale.value = fadeScaleRef.current
+      if (mat.uniforms.uFadeOpacity) mat.uniforms.uFadeOpacity.value = fadeOpacityRef.current
+      if (mat.uniforms.uRippleAges) {
+        const arr = mat.uniforms.uRippleAges.value
+        for (let j = 0; j < 12; j++) arr[j] = scrollState.rippleAges[j]
+      }
+      if (mat.uniforms.uRippleIntensities) {
+        const arr = mat.uniforms.uRippleIntensities.value
+        for (let j = 0; j < 12; j++) arr[j] = scrollState.rippleIntensities[j]
+      }
+      if (mat.uniforms.uRippleOrigin) {
+        mat.uniforms.uRippleOrigin.value.set(8, 0, state.camera.position.z)
+      }
+      if (mat.uniforms.uSectionColor) {
+        const c = scrollState.sectionColor
+        mat.uniforms.uSectionColor.value.set(c[0], c[1], c[2])
+      }
+    })
+  })
+
+  return (
+    <group ref={groupRef}>
+      {processedParts.map((part, index) => (
+        <instancedMesh
+          key={index}
+          ref={el => { meshRefs.current[index] = el! }}
+          args={[part.geometry, undefined, COUNT]}
+          frustumCulled={false}
+        >
+          <CustomShaderMaterial
+            ref={(el: unknown) => { materialRefs.current[index] = el as THREE.ShaderMaterial }}
+            baseMaterial={THREE.MeshStandardMaterial}
+            vertexShader={vertexShader}
+            fragmentShader={fragmentShader}
+            uniforms={{
+              uTime: { value: 0 },
+              uFadeScale: { value: 1 },
+              uFadeOpacity: { value: 1 },
+              uRippleAges: { value: [99,99,99,99,99,99,99,99,99,99,99,99] },
+              uRippleIntensities: { value: [1,1,1,1,1,1,1,1,1,1,1,1] },
+              uRippleOrigin: { value: new THREE.Vector3(8, 0, 0) },
+              uSectionColor: { value: new THREE.Vector3(1, 0.84, 0.31) },
+            }}
+            map={part.material.map}
+            color={part.material.color}
+            roughness={part.material.roughness ?? 0.5}
+            metalness={part.material.metalness ?? 0}
+            side={THREE.DoubleSide}
+            transparent={true}
+            alphaTest={0.01}
+          />
+        </instancedMesh>
+      ))}
+    </group>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// UnifiedModelField — main exported component
+// ---------------------------------------------------------------------------
+export function UnifiedModelField() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const desertLily = useGLTF('/DesertLily.glb') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const deadTree = useGLTF('/DeadTree.glb') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rose = useGLTF('/Rose.glb') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const flower = useGLTF('/Flower.glb') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const leaf = useGLTF('/Leaf.glb') as any
+
+  // Shared positions generated once
+  const { particles, randomData } = useMemo(() => generateSharedPositions(), [])
+
+  // Per-model fade refs (no re-renders)
+  const fadeScaleRefs = useRef(
+    Array.from({ length: MODEL_COUNT }, () => ({ current: 0 }))
+  ).current
+  const fadeOpacityRefs = useRef(
+    Array.from({ length: MODEL_COUNT }, () => ({ current: 0 }))
+  ).current
+  const visibleRefs = useRef(
+    Array.from({ length: MODEL_COUNT }, () => ({ current: false }))
+  ).current
+
+  // Section 0 starts fully visible
+  fadeScaleRefs[0].current = 1
+  fadeOpacityRefs[0].current = 1
+  visibleRefs[0].current = true
+
+  // 5 models, one per song section:
+  // 0: Desert Lily (Out is Through)
+  // 1: Dead Tree (Is Your Heart Big Enough)
+  // 2: Rose (Sincerity)
+  // 3: Hibiscus (Where's My Dignity Now)
+  // 4: Leaf (Good Talk)
+
+  const desertLilyParts = useMemo<MeshPart[]>(() => [{
+    geometry: desertLily.nodes.DeserLily_Mesh.geometry,
+    material: desertLily.materials.DeserLily_Mat,
+  }], [desertLily])
+
+  const deadTreeParts = useMemo<MeshPart[]>(() => [{
+    geometry: deadTree.nodes.dead_tree.geometry,
+    material: deadTree.materials.None,
+  }], [deadTree])
+
+  const roseParts = useMemo<MeshPart[]>(() => {
+    const croppedGeom = cropAndCenterGeometry(rose.nodes.rose.geometry, -0.35)
+    return [{ geometry: croppedGeom, material: rose.materials.None }]
+  }, [rose])
+
+  const hibiscusParts = useMemo<MeshPart[]>(() => [
+    { geometry: flower.nodes['hibiscus_flower-Mesh'].geometry, material: flower.materials.red },
+    { geometry: flower.nodes['hibiscus_flower-Mesh_1'].geometry, material: flower.materials.hay },
+    { geometry: flower.nodes['hibiscus_flower-Mesh_2'].geometry, material: flower.materials.tree },
+  ], [flower])
+
+  const leafParts = useMemo<MeshPart[]>(() => [{
+    geometry: leaf.nodes.leaf.geometry,
+    material: leaf.materials.None,
+  }], [leaf])
+
+  const baseScales = useMemo(() => [0.46, 0.85, 2.0, 0.7, 1.3], [])
+
+  const allParts = useMemo(() => [
+    desertLilyParts,
+    deadTreeParts,
+    roseParts,
+    hibiscusParts,
+    leafParts,
+  ], [desertLilyParts, deadTreeParts, roseParts, hibiscusParts, leafParts])
+
+  // Crossfade logic — runs every frame, mutates refs only
+  useFrame(() => {
+    const scrollProgress = Math.min(scrollState.offset * 5, 4.999)
+    const section = Math.min(Math.floor(scrollProgress), 4)
+    const sectionT = scrollProgress - section
+
+    const outgoing = section
+    const incoming = Math.min(section + 1, 4)
+    const fadeFactor = outgoing === incoming ? 0 : smoothstep(sectionT, 0.2, 0.6)
+
+    for (let i = 0; i < MODEL_COUNT; i++) {
+      if (i === outgoing && i === incoming) {
+        fadeScaleRefs[i].current = 1
+        fadeOpacityRefs[i].current = 1
+        visibleRefs[i].current = true
+      } else if (i === outgoing) {
+        fadeScaleRefs[i].current = 1 - fadeFactor
+        fadeOpacityRefs[i].current = 1 - fadeFactor
+        visibleRefs[i].current = (1 - fadeFactor) > 0.001
+      } else if (i === incoming) {
+        fadeScaleRefs[i].current = fadeFactor
+        fadeOpacityRefs[i].current = fadeFactor
+        visibleRefs[i].current = fadeFactor > 0.001
+      } else {
+        fadeScaleRefs[i].current = 0
+        fadeOpacityRefs[i].current = 0
+        visibleRefs[i].current = false
+      }
+    }
+  })
+
+  return (
+    <group>
+      {allParts.map((parts, i) => (
+        <ModelLayer
+          key={i}
+          meshParts={parts}
+          baseScale={baseScales[i]}
+          particles={particles}
+          randomData={randomData}
+          fadeScaleRef={fadeScaleRefs[i]}
+          fadeOpacityRef={fadeOpacityRefs[i]}
+          visibleRef={visibleRefs[i]}
+        />
+      ))}
+    </group>
+  )
+}
+
+// Preload all models
+useGLTF.preload('/DesertLily.glb')
+useGLTF.preload('/DeadTree.glb')
+useGLTF.preload('/Rose.glb')
+useGLTF.preload('/Flower.glb')
+useGLTF.preload('/Leaf.glb')

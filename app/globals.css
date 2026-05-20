@@ -25,6 +25,42 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  cursor: pointer;
+}
+
+.volume-slider::-moz-range-track {
+  background: rgba(255, 255, 255, 0.2);
+  height: 3px;
+  border-radius: 2px;
+}
+
 .rozsa-text {
   font-size: clamp(4rem, 15vw, 12rem);
   font-family: var(--font-rock-3d), cursive;
@@ -49,8 +85,316 @@ body {
   user-select: none;
 }
 
+@keyframes beat-ripple {
+  0% { transform: scale(0); opacity: 0.7; }
+  100% { transform: scale(8); opacity: 0; }
+}
+
 @keyframes iridescent {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+/* ── Music Player ────────────────────────────────────── */
+
+.mp-card {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  width: 260px;
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+.mp-cover-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 160px;
+  pointer-events: none;
+  transition: background 0.8s ease;
+}
+
+/* ── Disc area (top of card) ──────────────────────────── */
+
+.mp-disc-area {
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 18px 16px;
+  gap: 12px;
+}
+
+.mp-disc-wrap {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.mp-disc {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #333 0%, #111 55%, #080808 100%);
+  position: relative;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  will-change: transform;
+}
+
+.mp-disc-groove {
+  position: absolute;
+  border-radius: 50%;
+  border: 0.5px solid rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+}
+
+.mp-disc-groove-1 { inset: 15%; }
+.mp-disc-groove-2 { inset: 28%; }
+.mp-disc-groove-3 { inset: 40%; }
+
+.mp-disc-center {
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  transition: background 0.6s ease;
+}
+
+.mp-disc-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* ── ScalesMixer ──────────────────────────────────────── */
+
+.mp-scales {
+  width: 100%;
+  height: 44px;
+  display: block;
+  opacity: 0.8;
+}
+
+/* ── Card body (below disc area) ─────────────────────── */
+
+.mp-body {
+  width: 100%;
+  padding: 0 18px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Track info ───────────────────────────────────────── */
+
+.mp-info {
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 32px;
+  justify-content: center;
+}
+
+.mp-title {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.mp-artist {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── Progress bar ─────────────────────────────────────── */
+
+.mp-progress-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-time {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  user-select: none;
+}
+
+.mp-time:last-child {
+  text-align: right;
+}
+
+.mp-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.mp-bar:hover {
+  height: 5px;
+}
+
+.mp-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: background-color 0.6s ease;
+}
+
+.mp-bar-thumb {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: white;
+  border: 1.5px solid;
+  opacity: 0;
+  transition: opacity 0.2s ease, border-color 0.6s ease;
+  pointer-events: none;
+}
+
+.mp-bar:hover .mp-bar-thumb {
+  opacity: 1;
+}
+
+/* ── Controls ─────────────────────────────────────────── */
+
+.mp-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.mp-ctrl {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  outline: none;
+  padding: 0;
+  transition: color 0.2s ease, transform 0.1s ease;
+}
+
+.mp-ctrl:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+.mp-ctrl:active {
+  transform: scale(0.9);
+}
+
+.mp-ctrl-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.mp-ctrl-play {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+  transition: border-color 0.6s ease, box-shadow 0.6s ease, background 0.2s ease, transform 0.1s ease;
+}
+
+.mp-ctrl-play:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.08);
+}
+
+.mp-ctrl-play:active {
+  transform: scale(0.92);
+}
+
+/* ── Volume ───────────────────────────────────────────── */
+
+.mp-volume {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-vol-icon {
+  color: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+
+.mp-vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.mp-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.mp-vol-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }

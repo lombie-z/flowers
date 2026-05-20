@@ -18,9 +18,11 @@ function generateParticleData() {
     const r = Math.random()
     // Sparse early, dense after roses (section 2)
     let z: number
-    if (r < 0.07) {
-      z = -Math.random() * 32          // sections 0-1: very sparse
-    } else if (r < 0.20) {
+    if (r < 0.03) {
+      z = -Math.random() * 16          // section 0: barely any
+    } else if (r < 0.08) {
+      z = -16 - Math.random() * 16     // section 1: a few
+    } else if (r < 0.18) {
       z = -32 - Math.random() * 16     // section 2: building up
     } else {
       z = -48 - Math.random() * 32     // sections 3-4: dense
@@ -40,8 +42,11 @@ function generateParticleData() {
 // --- 2. SHADER (Unchanged) ---
 const vertexShader = `
   uniform float uTime;
-  uniform float uBeatPulse;
+  uniform float uRippleAges[12];
+  uniform float uRippleIntensities[12];
+  uniform vec3 uRippleOrigin;
   attribute float aRandom;
+  varying float vRipple;
 
   void main() {
     float floatSpeed = 1.0;
@@ -49,8 +54,28 @@ const vertexShader = `
     float yOffset = sin(uTime * floatSpeed + aRandom * 100.0) * floatHeight;
     csm_Position.y += yOffset;
 
-    float beatScale = 1.0 + uBeatPulse * 0.2;
-    csm_Position *= beatScale;
+    vec3 instPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
+    float dist = distance(instPos, uRippleOrigin);
+    float totalRipple = 0.0;
+    for (int i = 0; i < 12; i++) {
+      float age = uRippleAges[i];
+      if (age < 12.0) {
+        float radius = age * 20.0;
+        float ring = smoothstep(radius - 3.5, radius - 0.3, dist)
+                   * (1.0 - smoothstep(radius + 0.3, radius + 3.5, dist));
+        float fade = max(0.0, 1.0 - age * 0.18);
+        totalRipple += ring * fade * uRippleIntensities[i];
+      }
+    }
+    vRipple = min(totalRipple, 1.5);
+  }
+`
+
+const fragmentShader = `
+  uniform vec3 uSectionColor;
+  varying float vRipple;
+  void main() {
+    csm_Emissive = uSectionColor * vRipple * 2.5;
   }
 `
 
@@ -110,7 +135,19 @@ export function FlowerField() {
     materialRefs.current.forEach((mat) => {
       if (mat?.uniforms) {
         if (mat.uniforms.uTime) mat.uniforms.uTime.value = state.clock.elapsedTime
-        if (mat.uniforms.uBeatPulse) mat.uniforms.uBeatPulse.value = scrollState.beatPulse
+        if (mat.uniforms.uRippleAges) {
+          const arr = mat.uniforms.uRippleAges.value
+          for (let j = 0; j < 12; j++) arr[j] = scrollState.rippleAges[j]
+        }
+        if (mat.uniforms.uRippleIntensities) {
+          const arr = mat.uniforms.uRippleIntensities.value
+          for (let j = 0; j < 12; j++) arr[j] = scrollState.rippleIntensities[j]
+        }
+        if (mat.uniforms.uRippleOrigin) mat.uniforms.uRippleOrigin.value.set(8, 0, state.camera.position.z)
+        if (mat.uniforms.uSectionColor) {
+          const c = scrollState.sectionColor
+          mat.uniforms.uSectionColor.value.set(c[0], c[1], c[2])
+        }
       }
     })
   })
@@ -131,8 +168,12 @@ export function FlowerField() {
   // 1. Keep uTime in uniforms
   uniforms={{
     uTime: { value: 0 },
-    uBeatPulse: { value: 0 },
+    uRippleAges: { value: [99,99,99,99,99,99,99,99,99,99,99,99] },
+    uRippleIntensities: { value: [1,1,1,1,1,1,1,1,1,1,1,1] },
+    uRippleOrigin: { value: new THREE.Vector3(8, 0, 0) },
+    uSectionColor: { value: new THREE.Vector3(1, 0.84, 0.31) },
   }}
+  fragmentShader={fragmentShader}
   // 2. PASS TEXTURES AS DIRECT PROPS
   // This tells Three.js: "Turn on texture mapping logic!"
   map={part.material.map} 

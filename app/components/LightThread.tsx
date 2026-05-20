@@ -5,11 +5,11 @@ import * as THREE from 'three'
 import { scrollState } from '@/app/lib/scrollState'
 
 const SECTION_COLORS = [
-  new THREE.Color('#FFB74D'),
-  new THREE.Color('#4DD0E1'),
-  new THREE.Color('#F48FB1'),
-  new THREE.Color('#FF8A65'),
-  new THREE.Color('#B39DDB'),
+  new THREE.Color('#E0E0E8'),
+  new THREE.Color('#E53935'),
+  new THREE.Color('#EC407A'),
+  new THREE.Color('#FF7043'),
+  new THREE.Color('#AB47BC'),
 ]
 
 function getSectionColor(offset: number, target: THREE.Color) {
@@ -20,80 +20,153 @@ function getSectionColor(offset: number, target: THREE.Color) {
   target.copy(SECTION_COLORS[idx]).lerp(SECTION_COLORS[nextIdx], t)
 }
 
+function organicXY(z: number): [number, number] {
+  const t = -z / 80
+  return [
+    3.5 * Math.sin(t * Math.PI * 6) + 1.5 * Math.sin(t * Math.PI * 3 + 0.7) + 1.0 * Math.cos(t * Math.PI * 10 + 2.0),
+    2.8 * Math.cos(t * Math.PI * 5 + 1.0) + 1.3 * Math.sin(t * Math.PI * 8 + 0.3) + 0.7 * Math.sin(t * Math.PI * 14 + 1.5),
+  ]
+}
+
 function generateCurve() {
   const points: THREE.Vector3[] = []
   const scale = 0.8
 
-  // ── Lead-in: starts far off-screen, sweeps toward arrows ──
+  // ── Lead-in: starts far off-screen, sweeps into organic curve ──
   points.push(new THREE.Vector3(15 * scale, -3 * scale, 10))
   points.push(new THREE.Vector3(12 * scale, -2 * scale, 6))
   points.push(new THREE.Vector3(8 * scale, -0.5 * scale, 2))
   points.push(new THREE.Vector3(4 * scale, 0.2 * scale, -2))
   points.push(new THREE.Vector3(1 * scale, 0.15 * scale, -5))
-  points.push(new THREE.Vector3(-0.3 * scale, 0.1 * scale, -7.5))
+  points.push(new THREE.Vector3(-0.5 * scale, 0.1 * scale, -8))
 
-  // ── Part 1: Two forward-pointing chevrons in XZ plane (Z ≈ -9 to -14) ──
+  // ── Organic path from lead-in to arrows ──
+  // Run the organic curve from Z=-9 to Z=-17.75 (where arrow 1 back starts)
+  for (let i = 0; i < 50; i++) {
+    const z = -9 - (i / 49) * 8.75 // Z from -9 to -17.75
+    const [ox, oy] = organicXY(z)
+    points.push(new THREE.Vector3(ox, oy, z))
+  }
+
+  // ── Arrow 1: V chevron centered on organic path, tip at Z=-19.25 ──
+  // Placed at Z=-17.75 to -19.25 where |dY/dZ| ~ 0.86–1.23 (steep slope)
   const s = scale
+  {
+    // Left arm: 3 clustered points at back-left
+    const [cx1, cy1] = organicXY(-17.75)
+    points.push(new THREE.Vector3(cx1 + -0.65 * s, cy1 + 0.08 * s, -17.75))
+    points.push(new THREE.Vector3(cx1 + -0.65 * s, cy1 + 0.08 * s, -17.76))
+    points.push(new THREE.Vector3(cx1 + -0.65 * s, cy1 + 0.08 * s, -17.77))
+    // Descend to tip
+    {
+      const [cx, cy] = organicXY(-18.125)
+      points.push(new THREE.Vector3(cx + -0.45 * s, cy + 0.04 * s, -18.125))
+    }
+    {
+      const [cx, cy] = organicXY(-18.5)
+      points.push(new THREE.Vector3(cx + -0.2 * s, cy + 0.02 * s, -18.5))
+    }
+    // Tip: 5 clustered points at the forward point
+    {
+      const [cx, cy] = organicXY(-19.25)
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -19.25))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -19.26))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -19.27))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -19.26))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -19.25))
+    }
+    // Right arm: mirror of left (ascending back)
+    {
+      const [cx, cy] = organicXY(-18.5)
+      points.push(new THREE.Vector3(cx + 0.2 * s, cy + -0.02 * s, -18.5))
+    }
+    {
+      const [cx, cy] = organicXY(-18.125)
+      points.push(new THREE.Vector3(cx + 0.45 * s, cy + -0.04 * s, -18.125))
+    }
+    // 3 clustered points at back-right
+    {
+      const [cx, cy] = organicXY(-17.77)
+      points.push(new THREE.Vector3(cx + 0.65 * s, cy + -0.08 * s, -17.77))
+      points.push(new THREE.Vector3(cx + 0.65 * s, cy + -0.08 * s, -17.76))
+      points.push(new THREE.Vector3(cx + 0.65 * s, cy + -0.08 * s, -17.75))
+    }
+  }
 
-  // Arrow 1: V pointing along -Z
-  // Left arm
-  points.push(new THREE.Vector3(-0.65 * s, 0.08 * s, -9.0))
-  points.push(new THREE.Vector3(-0.65 * s, 0.08 * s, -9.01))
-  points.push(new THREE.Vector3(-0.65 * s, 0.08 * s, -9.02))
-  points.push(new THREE.Vector3(-0.45 * s, 0.04 * s, -9.5))
-  points.push(new THREE.Vector3(-0.2 * s, 0.02 * s, -10.0))
-  // Tip cluster
-  points.push(new THREE.Vector3(0, 0, -10.5))
-  points.push(new THREE.Vector3(0, 0, -10.51))
-  points.push(new THREE.Vector3(0, 0, -10.52))
-  points.push(new THREE.Vector3(0, 0, -10.51))
-  points.push(new THREE.Vector3(0, 0, -10.5))
-  // Right arm
-  points.push(new THREE.Vector3(0.2 * s, -0.02 * s, -10.0))
-  points.push(new THREE.Vector3(0.45 * s, -0.04 * s, -9.5))
-  points.push(new THREE.Vector3(0.65 * s, -0.08 * s, -9.02))
-  points.push(new THREE.Vector3(0.65 * s, -0.08 * s, -9.01))
-  points.push(new THREE.Vector3(0.65 * s, -0.08 * s, -9.0))
+  // ── Connecting loop: sweeps back from right to left (Z=-17.75 to -19.75) ──
+  {
+    const [cx1, cy1] = organicXY(-18.35)
+    points.push(new THREE.Vector3(cx1 + 0.5 * s, cy1 + 0, -18.35))
+    const [cx2, cy2] = organicXY(-18.85)
+    points.push(new THREE.Vector3(cx2 + 0.2 * s, cy2 + 0.05 * s, -18.85))
+    const [cx3, cy3] = organicXY(-19.35)
+    points.push(new THREE.Vector3(cx3 + -0.1 * s, cy3 + 0.08 * s, -19.35))
+    const [cx4, cy4] = organicXY(-19.55)
+    points.push(new THREE.Vector3(cx4 + -0.4 * s, cy4 + 0.06 * s, -19.55))
+  }
 
-  // Connecting loop: sweep back from right to left for arrow 2
-  points.push(new THREE.Vector3(0.5 * s, 0, -9.8))
-  points.push(new THREE.Vector3(0.2 * s, 0.05 * s, -10.3))
-  points.push(new THREE.Vector3(-0.1 * s, 0.08 * s, -10.8))
-  points.push(new THREE.Vector3(-0.4 * s, 0.06 * s, -11.3))
+  // ── Arrow 2: V chevron centered on organic path, tip at Z=-21.25 ──
+  // Placed at Z=-19.75 to -21.25 where |dY/dZ| ~ 1.23–1.29 (steepest slope)
+  {
+    // Left arm: 3 clustered points at back-left
+    const [cx1, cy1] = organicXY(-19.75)
+    points.push(new THREE.Vector3(cx1 + -0.65 * s, cy1 + 0.08 * s, -19.75))
+    points.push(new THREE.Vector3(cx1 + -0.65 * s, cy1 + 0.08 * s, -19.76))
+    points.push(new THREE.Vector3(cx1 + -0.65 * s, cy1 + 0.08 * s, -19.77))
+    // Descend to tip
+    {
+      const [cx, cy] = organicXY(-20.125)
+      points.push(new THREE.Vector3(cx + -0.45 * s, cy + 0.04 * s, -20.125))
+    }
+    {
+      const [cx, cy] = organicXY(-20.5)
+      points.push(new THREE.Vector3(cx + -0.2 * s, cy + 0.02 * s, -20.5))
+    }
+    // Tip: 5 clustered points
+    {
+      const [cx, cy] = organicXY(-21.25)
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -21.25))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -21.26))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -21.27))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -21.26))
+      points.push(new THREE.Vector3(cx + 0, cy + 0, -21.25))
+    }
+    // Right arm: mirror
+    {
+      const [cx, cy] = organicXY(-20.5)
+      points.push(new THREE.Vector3(cx + 0.2 * s, cy + -0.02 * s, -20.5))
+    }
+    {
+      const [cx, cy] = organicXY(-20.125)
+      points.push(new THREE.Vector3(cx + 0.45 * s, cy + -0.04 * s, -20.125))
+    }
+    // 3 clustered points at back-right
+    {
+      const [cx, cy] = organicXY(-19.77)
+      points.push(new THREE.Vector3(cx + 0.65 * s, cy + -0.08 * s, -19.77))
+      points.push(new THREE.Vector3(cx + 0.65 * s, cy + -0.08 * s, -19.76))
+      points.push(new THREE.Vector3(cx + 0.65 * s, cy + -0.08 * s, -19.75))
+    }
+  }
 
-  // Arrow 2: V pointing along -Z
-  // Left arm
-  points.push(new THREE.Vector3(-0.65 * s, 0.08 * s, -11.8))
-  points.push(new THREE.Vector3(-0.65 * s, 0.08 * s, -11.81))
-  points.push(new THREE.Vector3(-0.65 * s, 0.08 * s, -11.82))
-  points.push(new THREE.Vector3(-0.45 * s, 0.04 * s, -12.3))
-  points.push(new THREE.Vector3(-0.2 * s, 0.02 * s, -12.8))
-  // Tip cluster
-  points.push(new THREE.Vector3(0, 0, -13.3))
-  points.push(new THREE.Vector3(0, 0, -13.31))
-  points.push(new THREE.Vector3(0, 0, -13.32))
-  points.push(new THREE.Vector3(0, 0, -13.31))
-  points.push(new THREE.Vector3(0, 0, -13.3))
-  // Right arm
-  points.push(new THREE.Vector3(0.2 * s, -0.02 * s, -12.8))
-  points.push(new THREE.Vector3(0.45 * s, -0.04 * s, -12.3))
-  points.push(new THREE.Vector3(0.65 * s, -0.08 * s, -11.82))
-  points.push(new THREE.Vector3(0.65 * s, -0.08 * s, -11.81))
-  points.push(new THREE.Vector3(0.65 * s, -0.08 * s, -11.8))
+  // ── Trail-out from arrow 2: transition back toward organic curve ──
+  {
+    const [cx1, cy1] = organicXY(-20.5)
+    points.push(new THREE.Vector3(cx1 + 0.4 * s, cy1 + -0.05 * s, -20.5))
+    const [cx2, cy2] = organicXY(-21.5)
+    points.push(new THREE.Vector3(cx2 + 0.1 * s, cy2 + -0.1 * s, -21.5))
+    const [cx3, cy3] = organicXY(-22.5)
+    points.push(new THREE.Vector3(cx3 + 0, cy3 + -0.15 * s, -22.5))
+  }
 
-  // Exit: trail forward into blend zone
-  points.push(new THREE.Vector3(0.4 * s, -0.05 * s, -12.5))
-  points.push(new THREE.Vector3(0.1 * s, -0.1 * s, -13.5))
-  points.push(new THREE.Vector3(0, -0.15 * s, -14.5))
-
-  // ── Blend zone: transition from arrows to organic path ──
+  // ── Blend zone ──
   const lastArrowPt = points[points.length - 1]
   const blendCount = 30
   for (let i = 1; i <= blendCount; i++) {
     const t = i / blendCount
     const ease = t * t * (3 - 2 * t)
 
-    const z = -14.5 - t * 2.5
+    const z = -22.5 - t * 2.5 // Z from -22.5 to -25.0
 
     const tOrg = -z / 80
     const endT = Math.max(0, (tOrg - 0.85) / 0.15)
@@ -113,10 +186,10 @@ function generateCurve() {
     points.push(new THREE.Vector3(x, y, z))
   }
 
-  // ── Part 2: Organic harmonic path (Z = -17 to Z = -80) ──
+  // ── Part 2: Organic harmonic path (Z = -25 to Z = -80) ──
   const organicCount = 300
   for (let i = 0; i < organicCount; i++) {
-    const z = -17.0 - (i / (organicCount - 1)) * 63 // Z from -17 to -80
+    const z = -25.0 - (i / (organicCount - 1)) * 55 // Z from -25 to -80
     const t = -z / 80
 
     const endT = Math.max(0, (t - 0.85) / 0.15)
@@ -140,21 +213,12 @@ function generateCurve() {
 }
 
 const vertexShader = /* glsl */ `
-  uniform float uBeatPulse;
-  uniform float uTime;
   varying float vWorldZ;
   varying vec2 vUv;
 
   void main() {
     vUv = uv;
-    vec3 pos = position;
-
-    // Jagged displacement on beat — high-frequency sine spikes
-    float jag = uBeatPulse * sin(pos.z * 25.0 + uTime * 8.0) * 0.1;
-    pos.x += jag;
-    pos.y += jag * 0.6;
-
-    vec4 worldPos = modelMatrix * vec4(pos, 1.0);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldZ = worldPos.z;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
@@ -191,7 +255,7 @@ const fragmentShader = /* glsl */ `
     float geoEndFade = smoothstep(-80.0, -76.0, vWorldZ);
 
     // Radial glow — soft gaussian tube edge
-    float radial = exp(-pow(abs(vUv.y - 0.5) * 2.0, 2.0) * 2.0);
+    float radial = exp(-pow(abs(vUv.y - 0.5) * 2.0, 2.0) * 1.2);
 
     // Leading-edge shimmer
     float nearFront = 1.0 - smoothstep(frontEdge, frontEdge + 6.0, ahead);
@@ -200,12 +264,16 @@ const fragmentShader = /* glsl */ `
     // Music pulse — gentle travelling wave when playing
     float pulse = 1.0 + uPlaying * sin(uTime * 3.0 + vWorldZ * 1.2) * 0.25;
 
-    float beatFlash = 1.0 + uBeatPulse * 0.8;
+    // Beat pulse: bright band that sweeps forward along the thread
+    float pulsePos = ahead + (1.0 - uBeatPulse) * 25.0;
+    float pulseBand = smoothstep(pulsePos - 4.0, pulsePos - 1.0, 0.0)
+                    * (1.0 - smoothstep(pulsePos + 1.0, pulsePos + 4.0, 0.0));
+    float beatBright = 1.0 + pulseBand * uBeatPulse * 2.5;
 
-    float alpha = revealFade * radial * shimmer * pulse * geoEndFade * 1.0 * beatFlash;
+    float alpha = revealFade * radial * shimmer * pulse * geoEndFade * 1.0;
     if (alpha < 0.005) discard;
 
-    gl_FragColor = vec4(uColor * 2.5 * beatFlash, alpha);
+    gl_FragColor = vec4(uColor * 1.0 * beatBright, alpha * beatBright);
   }
 `
 
@@ -214,7 +282,7 @@ export function LightThread() {
 
   const { geometry, material } = useMemo(() => {
     const curve = generateCurve()
-    const geo = new THREE.TubeGeometry(curve, 800, 0.05, 8, false)
+    const geo = new THREE.TubeGeometry(curve, 800, 0.07, 8, false)
 
     const mat = new THREE.ShaderMaterial({
       vertexShader,
