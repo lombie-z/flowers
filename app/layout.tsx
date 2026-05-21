@@ -19,18 +19,18 @@ const rock3d = Rock_3D({
 });
 
 export const metadata: Metadata = {
-  title: "Good Talk — ROZSA",
+  title: "Good Talk — I. Rozsa",
   description: "I. Rozsa — independent album.",
   metadataBase: new URL("https://goodtalk.isaacrozsa.com"),
   openGraph: {
-    title: "Good Talk — ROZSA",
+    title: "Good Talk — I. Rozsa",
     description: "I. Rozsa — independent album.",
     type: "website",
-    siteName: "ROZSA",
+    siteName: "I. Rozsa",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Good Talk — ROZSA",
+    title: "Good Talk — I. Rozsa",
     description: "I. Rozsa — independent album.",
   },
 };
