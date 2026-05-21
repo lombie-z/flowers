@@ -314,10 +314,11 @@ export function UnifiedModelField() {
     return [{ geometry: cropped, material: rose.materials.None }]
   }, [rose])
 
-  const tulipParts = useMemo<MeshPart[]>(() => [{
-    geometry: tulip.nodes.tulip.geometry,
-    material: tulip.materials.None,
-  }], [tulip])
+  const tulipParts = useMemo<MeshPart[]>(() => {
+    const mat = tulip.materials.None.clone()
+    mat.color = new THREE.Color('#EC407A')
+    return [{ geometry: tulip.nodes.tulip.geometry, material: mat }]
+  }, [tulip])
 
   const hibiscusParts = useMemo<MeshPart[]>(() => [
     { geometry: flower.nodes['hibiscus_flower-Mesh'].geometry, material: flower.materials.red },

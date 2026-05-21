@@ -213,7 +213,7 @@ export function MusicPlayer() {
 
     audiosRef.current = SONGS.map(song => {
       const audio = new Audio(song.src)
-      audio.loop = true
+      audio.loop = false
       audio.preload = 'auto'
       const source = ctx.createMediaElementSource(audio)
       const gain = ctx.createGain()
@@ -351,6 +351,30 @@ export function MusicPlayer() {
       audiosRef.current[indexRef.current].play().catch(() => {})
     } else {
       audiosRef.current.forEach(a => a.pause())
+    }
+  }, [])
+
+  /* ── Auto-advance when song ends ──────────────────── */
+  useEffect(() => {
+    const handlers = audiosRef.current.map((audio, i) => {
+      const onEnded = () => {
+        if (i < SONGS.length - 1) {
+          // Scroll to next section — rAF loop handles song switching
+          const candidates = document.querySelectorAll('div')
+          for (const el of candidates) {
+            if (el.scrollHeight > el.clientHeight * 2 && el.style.overflow) {
+              const targetOffset = (i + 1 + 0.1) / 5
+              el.scrollTo({ top: targetOffset * (el.scrollHeight - el.clientHeight), behavior: 'smooth' })
+              break
+            }
+          }
+        }
+      }
+      audio.addEventListener('ended', onEnded)
+      return onEnded
+    })
+    return () => {
+      audiosRef.current.forEach((audio, i) => audio.removeEventListener('ended', handlers[i]))
     }
   }, [])
 
