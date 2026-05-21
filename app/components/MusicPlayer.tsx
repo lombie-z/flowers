@@ -453,7 +453,7 @@ export function MusicPlayer() {
             {SONGS[songIndex].title}
           </motion.span>
         </AnimatePresence>
-        <span className="mp-artist">ROZSA</span>
+        <span className="mp-artist">Isaac Rozsa</span>
       </div>
 
       {/* Progress bar */}
