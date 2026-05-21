@@ -27,6 +27,7 @@ export const metadata: Metadata = {
     description: "I. Rozsa — independent album.",
     type: "website",
     siteName: "I. Rozsa",
+    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
