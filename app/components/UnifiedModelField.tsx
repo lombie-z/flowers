@@ -433,32 +433,28 @@ export function UnifiedModelField() {
     // TreeBranch visible in sections 0, 2, 3, 4 (all except 1)
     // Matchstick visible only in section 1
     // During transitions into/out of section 1, crossfade between them
-    const enteringSection1 = (outgoing === 0 && incoming === 1)
-    const leavingSection1 = (outgoing === 1 && incoming === 2)
-    const inSection1 = (section === 1 && outgoing === incoming)
-
-    // Only blur branches when they're actually morphing (into/out of section 1)
-    const branchIsTransitioning = enteringSection1 || leavingSection1
+    // Matchsticks in sections 1 and 4, branches everywhere else
+    const wantsMatchstick = section === 1 || section === 4
+    const enteringMatch = !wantsMatchstick && (incoming === 1 || incoming === 4) && fadeFactor > 0
+    const leavingMatch = wantsMatchstick && incoming !== 1 && incoming !== 4 && fadeFactor > 0
+    const branchIsTransitioning = enteringMatch || leavingMatch
     branchBlurRef.current = branchIsTransitioning ? Math.sin(fadeFactor * Math.PI) : 0
 
-    if (enteringSection1) {
-      // Branches fade out, matchsticks fade in
+    if (enteringMatch) {
       branchFadeScaleRefs[0].current = 1 - fadeFactor
       branchFadeOpacityRefs[0].current = 1 - fadeFactor
       branchVisibleRefs[0].current = (1 - fadeFactor) > 0.001
       branchFadeScaleRefs[1].current = fadeFactor
       branchFadeOpacityRefs[1].current = fadeFactor
       branchVisibleRefs[1].current = fadeFactor > 0.001
-    } else if (leavingSection1) {
-      // Matchsticks fade out, branches fade in
+    } else if (leavingMatch) {
       branchFadeScaleRefs[1].current = 1 - fadeFactor
       branchFadeOpacityRefs[1].current = 1 - fadeFactor
       branchVisibleRefs[1].current = (1 - fadeFactor) > 0.001
       branchFadeScaleRefs[0].current = fadeFactor
       branchFadeOpacityRefs[0].current = fadeFactor
       branchVisibleRefs[0].current = fadeFactor > 0.001
-    } else if (inSection1) {
-      // Fully in section 1 — only matchsticks visible
+    } else if (wantsMatchstick) {
       branchFadeScaleRefs[0].current = 0
       branchFadeOpacityRefs[0].current = 0
       branchVisibleRefs[0].current = false
@@ -466,7 +462,6 @@ export function UnifiedModelField() {
       branchFadeOpacityRefs[1].current = 1
       branchVisibleRefs[1].current = true
     } else {
-      // All other sections — only branches visible
       branchFadeScaleRefs[0].current = 1
       branchFadeOpacityRefs[0].current = 1
       branchVisibleRefs[0].current = true
