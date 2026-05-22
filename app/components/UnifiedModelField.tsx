@@ -7,7 +7,7 @@ import CustomShaderMaterial from 'three-custom-shader-material'
 import { scrollState } from '@/app/lib/scrollState'
 
 const COUNT = 350
-const BRANCH_COUNT = 65
+const BRANCH_COUNT = 100
 const MODEL_COUNT = 5
 
 // ---------------------------------------------------------------------------
@@ -26,7 +26,11 @@ function generateSharedPositions(count: number = COUNT) {
   for (let i = 0; i < count; i++) {
     const x = (Math.random() - 0.5) * 20
     const y = (Math.random() - 0.5) * 20
-    const z = -Math.random() * 80 // uniform Z in [0, -80]
+    let z = -Math.random() * 80
+    // Thin out section 1 (Z: -16 to -32) — reject 50% of instances there
+    if (z < -16 && z > -32 && Math.random() < 0.5) {
+      z = -(32 + Math.random() * 48) // push to sections 2-4 instead
+    }
     const scale = 0.3 + Math.random() * 0.5
 
     particles.push({
