@@ -7,6 +7,7 @@ import CustomShaderMaterial from 'three-custom-shader-material'
 import { scrollState } from '@/app/lib/scrollState'
 
 const COUNT = 350
+const BRANCH_COUNT = 100
 const MODEL_COUNT = 5
 
 // ---------------------------------------------------------------------------
@@ -18,11 +19,11 @@ interface ParticleData {
   rotationX: number; rotationY: number; rotationZ: number
 }
 
-function generateSharedPositions() {
+function generateSharedPositions(count: number = COUNT) {
   const particles: ParticleData[] = []
-  const randomData = new Float32Array(COUNT)
+  const randomData = new Float32Array(count)
 
-  for (let i = 0; i < COUNT; i++) {
+  for (let i = 0; i < count; i++) {
     const x = (Math.random() - 0.5) * 20
     const y = (Math.random() - 0.5) * 20
     const z = -Math.random() * 80 // uniform Z in [0, -80]
@@ -154,6 +155,7 @@ function ModelLayer({
   fadeScaleRef,
   fadeOpacityRef,
   visibleRef,
+  count,
 }: {
   meshParts: MeshPart[]
   baseScale: number
@@ -162,6 +164,7 @@ function ModelLayer({
   fadeScaleRef: React.MutableRefObject<number>
   fadeOpacityRef: React.MutableRefObject<number>
   visibleRef: React.MutableRefObject<boolean>
+  count?: number
 }) {
   const meshRefs = useRef<THREE.InstancedMesh[]>([])
   const materialRefs = useRef<THREE.ShaderMaterial[]>([])
@@ -231,7 +234,7 @@ function ModelLayer({
         <instancedMesh
           key={index}
           ref={el => { meshRefs.current[index] = el! }}
-          args={[part.geometry, undefined, COUNT]}
+          args={[part.geometry, undefined, count ?? COUNT]}
           frustumCulled={false}
         >
           <CustomShaderMaterial
@@ -277,9 +280,18 @@ export function UnifiedModelField() {
   const flower = useGLTF('/Flower.glb') as any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const leaf = useGLTF('/Leaf.glb') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const treeBranch = useGLTF('/TreeBranch.glb') as any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const matchstick = useGLTF('/Matchstick.glb') as any
 
   // Shared positions generated once
   const { particles, randomData } = useMemo(() => generateSharedPositions(), [])
+
+  // Branch positions — separate set for the branch/matchstick layer
+  const { particles: branchParticles, randomData: branchRandomData } = useMemo(
+    () => generateSharedPositions(BRANCH_COUNT), []
+  )
 
   // Per-model fade refs (no re-renders)
   const fadeScaleRefs = useRef(
@@ -292,10 +304,26 @@ export function UnifiedModelField() {
     Array.from({ length: MODEL_COUNT }, () => ({ current: false }))
   ).current
 
+  // Branch layer fade refs (TreeBranch = 0, Matchstick = 1)
+  const branchFadeScaleRefs = useRef(
+    Array.from({ length: 2 }, () => ({ current: 0 }))
+  ).current
+  const branchFadeOpacityRefs = useRef(
+    Array.from({ length: 2 }, () => ({ current: 0 }))
+  ).current
+  const branchVisibleRefs = useRef(
+    Array.from({ length: 2 }, () => ({ current: false }))
+  ).current
+
   // Section 0 starts fully visible
   fadeScaleRefs[0].current = 1
   fadeOpacityRefs[0].current = 1
   visibleRefs[0].current = true
+
+  // TreeBranch starts visible (visible in all sections except 1)
+  branchFadeScaleRefs[0].current = 1
+  branchFadeOpacityRefs[0].current = 1
+  branchVisibleRefs[0].current = true
 
   // 5 models, one per song section:
   // 0: Desert Lily (Out is Through)
@@ -330,6 +358,16 @@ export function UnifiedModelField() {
     geometry: leaf.nodes.leaf.geometry,
     material: leaf.materials.None,
   }], [leaf])
+
+  const branchParts = useMemo<MeshPart[]>(() => [{
+    geometry: treeBranch.nodes.Tree_branch.geometry,
+    material: treeBranch.materials.None,
+  }], [treeBranch])
+
+  const matchstickParts = useMemo<MeshPart[]>(() => [
+    { geometry: matchstick.nodes['Node-Mesh'].geometry, material: matchstick.materials.lambert2SG },
+    { geometry: matchstick.nodes['Node-Mesh_1'].geometry, material: matchstick.materials.lambert3SG },
+  ], [matchstick])
 
   const baseScales = useMemo(() => [0.46, 1.3, 0.8, 0.7, 1.2], [])
 
@@ -378,6 +416,48 @@ export function UnifiedModelField() {
         visibleRefs[i].current = false
       }
     }
+
+    // Branch layer crossfade:
+    // TreeBranch visible in sections 0, 2, 3, 4 (all except 1)
+    // Matchstick visible only in section 1
+    // During transitions into/out of section 1, crossfade between them
+    const enteringSection1 = (outgoing === 0 && incoming === 1)
+    const leavingSection1 = (outgoing === 1 && incoming === 2)
+    const inSection1 = (section === 1 && outgoing === incoming)
+
+    if (enteringSection1) {
+      // Branches fade out, matchsticks fade in
+      branchFadeScaleRefs[0].current = 1 - fadeFactor
+      branchFadeOpacityRefs[0].current = 1 - fadeFactor
+      branchVisibleRefs[0].current = (1 - fadeFactor) > 0.001
+      branchFadeScaleRefs[1].current = fadeFactor
+      branchFadeOpacityRefs[1].current = fadeFactor
+      branchVisibleRefs[1].current = fadeFactor > 0.001
+    } else if (leavingSection1) {
+      // Matchsticks fade out, branches fade in
+      branchFadeScaleRefs[1].current = 1 - fadeFactor
+      branchFadeOpacityRefs[1].current = 1 - fadeFactor
+      branchVisibleRefs[1].current = (1 - fadeFactor) > 0.001
+      branchFadeScaleRefs[0].current = fadeFactor
+      branchFadeOpacityRefs[0].current = fadeFactor
+      branchVisibleRefs[0].current = fadeFactor > 0.001
+    } else if (inSection1) {
+      // Fully in section 1 — only matchsticks visible
+      branchFadeScaleRefs[0].current = 0
+      branchFadeOpacityRefs[0].current = 0
+      branchVisibleRefs[0].current = false
+      branchFadeScaleRefs[1].current = 1
+      branchFadeOpacityRefs[1].current = 1
+      branchVisibleRefs[1].current = true
+    } else {
+      // All other sections — only branches visible
+      branchFadeScaleRefs[0].current = 1
+      branchFadeOpacityRefs[0].current = 1
+      branchVisibleRefs[0].current = true
+      branchFadeScaleRefs[1].current = 0
+      branchFadeOpacityRefs[1].current = 0
+      branchVisibleRefs[1].current = false
+    }
   })
 
   return (
@@ -394,6 +474,28 @@ export function UnifiedModelField() {
           visibleRef={visibleRefs[i]}
         />
       ))}
+      {/* Branch layer — TreeBranch (visible except section 1) */}
+      <ModelLayer
+        meshParts={branchParts}
+        baseScale={0.8}
+        particles={branchParticles}
+        randomData={branchRandomData}
+        fadeScaleRef={branchFadeScaleRefs[0]}
+        fadeOpacityRef={branchFadeOpacityRefs[0]}
+        visibleRef={branchVisibleRefs[0]}
+        count={BRANCH_COUNT}
+      />
+      {/* Branch layer — Matchstick (visible only in section 1) */}
+      <ModelLayer
+        meshParts={matchstickParts}
+        baseScale={0.25}
+        particles={branchParticles}
+        randomData={branchRandomData}
+        fadeScaleRef={branchFadeScaleRefs[1]}
+        fadeOpacityRef={branchFadeOpacityRefs[1]}
+        visibleRef={branchVisibleRefs[1]}
+        count={BRANCH_COUNT}
+      />
     </group>
   )
 }
@@ -404,3 +506,5 @@ useGLTF.preload('/Rose.glb')
 useGLTF.preload('/Tulip.glb')
 useGLTF.preload('/Flower.glb')
 useGLTF.preload('/Leaf.glb')
+useGLTF.preload('/TreeBranch.glb')
+useGLTF.preload('/Matchstick.glb')
