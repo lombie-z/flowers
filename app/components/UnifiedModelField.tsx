@@ -27,9 +27,13 @@ function generateSharedPositions(count: number = COUNT) {
     const x = (Math.random() - 0.5) * 20
     const y = (Math.random() - 0.5) * 20
     let z = -Math.random() * 80
-    // Thin out section 1 (Z: -16 to -32) — reject 75% of instances there
-    if (z < -16 && z > -32 && Math.random() < 0.75) {
-      z = -(32 + Math.random() * 48) // push to sections 2-4 instead
+    // Clear area at the very start (Z: 0 to -8) — push everything out
+    if (z > -8) {
+      z = -(8 + Math.random() * 72)
+    }
+    // Thin out section 1 (Z: -8 to -32) — reject 70% of instances there
+    if (z < -8 && z > -32 && Math.random() < 0.7) {
+      z = -(32 + Math.random() * 48)
     }
     const scale = 0.3 + Math.random() * 0.5
 
