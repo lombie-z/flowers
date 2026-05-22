@@ -7,7 +7,7 @@ import CustomShaderMaterial from 'three-custom-shader-material'
 import { scrollState } from '@/app/lib/scrollState'
 
 const COUNT = 350
-const BRANCH_COUNT = 100
+const BRANCH_COUNT = 65
 const MODEL_COUNT = 5
 
 // ---------------------------------------------------------------------------
@@ -156,6 +156,7 @@ function ModelLayer({
   fadeOpacityRef,
   visibleRef,
   count,
+  blurOverrideRef,
 }: {
   meshParts: MeshPart[]
   baseScale: number
@@ -165,6 +166,7 @@ function ModelLayer({
   fadeOpacityRef: React.MutableRefObject<number>
   visibleRef: React.MutableRefObject<boolean>
   count?: number
+  blurOverrideRef?: React.MutableRefObject<number>
 }) {
   const meshRefs = useRef<THREE.InstancedMesh[]>([])
   const materialRefs = useRef<THREE.ShaderMaterial[]>([])
@@ -223,7 +225,7 @@ function ModelLayer({
         mat.uniforms.uSectionColor.value.set(c[0], c[1], c[2])
       }
       if (mat.uniforms.uTransitionBlur) {
-        mat.uniforms.uTransitionBlur.value = scrollState.transitionBlur
+        mat.uniforms.uTransitionBlur.value = blurOverrideRef ? blurOverrideRef.current : scrollState.transitionBlur
       }
     })
   })
@@ -325,6 +327,8 @@ export function UnifiedModelField() {
   branchFadeOpacityRefs[0].current = 1
   branchVisibleRefs[0].current = true
 
+  const branchBlurRef = useRef({ current: 0 }).current
+
   // 5 models, one per song section:
   // 0: Desert Lily (Out is Through)
   // 1: Leaf (Is Your Heart Big Enough)
@@ -425,6 +429,10 @@ export function UnifiedModelField() {
     const leavingSection1 = (outgoing === 1 && incoming === 2)
     const inSection1 = (section === 1 && outgoing === incoming)
 
+    // Only blur branches when they're actually morphing (into/out of section 1)
+    const branchIsTransitioning = enteringSection1 || leavingSection1
+    branchBlurRef.current = branchIsTransitioning ? Math.sin(fadeFactor * Math.PI) : 0
+
     if (enteringSection1) {
       // Branches fade out, matchsticks fade in
       branchFadeScaleRefs[0].current = 1 - fadeFactor
@@ -484,6 +492,7 @@ export function UnifiedModelField() {
         fadeOpacityRef={branchFadeOpacityRefs[0]}
         visibleRef={branchVisibleRefs[0]}
         count={BRANCH_COUNT}
+        blurOverrideRef={branchBlurRef}
       />
       {/* Branch layer — Matchstick (visible only in section 1) */}
       <ModelLayer
@@ -495,6 +504,7 @@ export function UnifiedModelField() {
         fadeOpacityRef={branchFadeOpacityRefs[1]}
         visibleRef={branchVisibleRefs[1]}
         count={BRANCH_COUNT}
+        blurOverrideRef={branchBlurRef}
       />
     </group>
   )
