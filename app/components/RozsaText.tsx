@@ -197,9 +197,9 @@ function MatchstickModel() {
 
   return (
     <group
-      rotation={[0, Math.PI / 2, 0.1]}
+      rotation={[0, Math.PI / 2, 0.35]}
       scale={0.2}
-      position={[-0.65, 0, 0]}
+      position={[-0.65, 0.15, 0]}
     >
       <mesh geometry={nodes['Node-Mesh'].geometry}>
         <meshStandardMaterial {...materials.lambert2SG} />
