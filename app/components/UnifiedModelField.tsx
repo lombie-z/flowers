@@ -406,7 +406,7 @@ export function UnifiedModelField() {
     const headGeom = matchstick.nodes['Node-Mesh_1'].geometry.clone()
     const litData = new Float32Array(BRANCH_COUNT)
     // 3 lit matches spread across section 1: one near z≈-30, others pushed further out
-    const targets = [-30, -22, -36]
+    const targets = [-38, -30, -44]
     const used = new Set<number>()
     for (const tz of targets) {
       let bestIdx = 0, bestDist = Infinity
