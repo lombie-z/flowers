@@ -274,7 +274,7 @@ export function RozsaText() {
       }
       smokeState.wasVisible = matchVisible
       if (matchVisible) {
-        const raw = Math.min(1, (now - smokeState.fadeStart) / 2.0)
+        const raw = Math.min(1, (now - smokeState.fadeStart) / 4.0)
         smokeState.revealHeight = raw * 1.2
       } else {
         smokeState.revealHeight = 0
