@@ -111,24 +111,43 @@ export function RozsaText() {
           <h1 className="rozsa-title">rozsa</h1>
         </div>
         {/* Cover image that falls onto top-left corner */}
-        <img
+        <div
           ref={coverRef}
-          src="/good-talk-cover.png"
-          alt="Good Talk"
           style={{
             position: 'absolute',
             top: -40,
             left: -50,
             width: 170,
-            height: 'auto',
+            height: 170,
             opacity: 0,
             borderRadius: 4,
             boxShadow: '0 6px 24px rgba(0,0,0,0.5)',
             zIndex: 3,
             pointerEvents: 'none',
             transformOrigin: 'top left',
+            overflow: 'hidden',
           }}
-        />
+        >
+          <img
+            src="/good-talk-cover.png"
+            alt="Good Talk"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          />
+          {/* Plastic wrap overlay */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            mixBlendMode: 'screen',
+            opacity: 0.8,
+            pointerEvents: 'none',
+          }}>
+            <img
+              src="/plastic-wrap.jpg"
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+        </div>
         {/* 3D Matchstick with glowing tip */}
         <div
           ref={matchRef}
