@@ -197,9 +197,9 @@ function MatchstickModel() {
 
   return (
     <group
-      rotation={[0, Math.PI / 2, 0.35]}
+      rotation={[0, Math.PI / 2, 0.7]}
       scale={0.2}
-      position={[-0.65, 0.15, 0]}
+      position={[-0.65, 0.35, 0]}
     >
       <mesh geometry={nodes['Node-Mesh'].geometry}>
         <meshStandardMaterial {...materials.lambert2SG} />
@@ -386,8 +386,8 @@ export function RozsaText() {
               </Canvas>
             </div>
             {/* Matchstick */}
-            <div style={{ width: 200, height: 50 }}>
-              <Canvas camera={{ position: [0, 0, 2], fov: 16 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
+            <div style={{ width: 200, height: 80 }}>
+              <Canvas camera={{ position: [0, 0, 2], fov: 24 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[2, 3, 2]} intensity={0.8} />
                 <MatchstickModel />
