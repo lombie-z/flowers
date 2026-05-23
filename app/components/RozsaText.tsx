@@ -57,8 +57,11 @@ export function RozsaText() {
         opacity: 0,
       }}
     >
-      <div className="rozsa-fur-card" style={{ position: 'relative' }}>
-        <div className="rozsa-fur-texture" />
+      <div style={{ position: 'relative' }}>
+        <div className="rozsa-fur-card">
+          <div className="rozsa-fur-texture" />
+          <h1 className="rozsa-title">rozsa</h1>
+        </div>
         {/* Cover image that falls onto top-left corner */}
         <img
           ref={coverRef}
@@ -73,11 +76,10 @@ export function RozsaText() {
             opacity: 0,
             borderRadius: 4,
             boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
-            zIndex: 2,
+            zIndex: 3,
             pointerEvents: 'none',
           }}
         />
-        <h1 className="rozsa-title">rozsa</h1>
       </div>
     </div>
   )
