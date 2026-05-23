@@ -405,13 +405,11 @@ export function UnifiedModelField() {
 
     const headGeom = matchstick.nodes['Node-Mesh_1'].geometry.clone()
     const litData = new Float32Array(BRANCH_COUNT)
-    // Pick the instance closest to the centre of section 1's camera range (z ≈ -24)
-    let bestIdx = 0, bestDist = Infinity
-    for (let i = 0; i < branchParticles.length; i++) {
-      const d = Math.abs(branchParticles[i].z - (-30))
-      if (d < bestDist) { bestDist = d; bestIdx = i }
-    }
-    litData[bestIdx] = 1.0
+    // Pick the 3 instances closest to the end of section 1's camera range (z ≈ -30)
+    const ranked = branchParticles
+      .map((p, i) => ({ i, d: Math.abs(p.z - (-30)) }))
+      .sort((a, b) => a.d - b.d)
+    for (let k = 0; k < 3; k++) litData[ranked[k].i] = 1.0
     headGeom.setAttribute('aLit', new THREE.InstancedBufferAttribute(litData, 1))
 
     return [
