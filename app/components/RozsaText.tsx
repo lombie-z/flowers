@@ -1,9 +1,76 @@
 'use client'
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { scrollState } from '@/app/lib/scrollState'
+
+const smokeVertexShader = `
+  uniform float uTime;
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+
+const smokeFragmentShader = `
+  uniform float uTime;
+  varying vec2 vUv;
+
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p); vec2 f = fract(p);
+    float a = hash(i); float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0)); float d = hash(i + vec2(1.0, 1.0));
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+  }
+
+  void main() {
+    vec2 uv = vUv;
+
+    float n = noise(uv * 4.0 + vec2(uTime * 0.3, -uTime * 0.5));
+    float n2 = noise(uv * 8.0 + vec2(-uTime * 0.2, -uTime * 0.8));
+
+    float shape = smoothstep(0.0, 0.15, uv.y) * smoothstep(1.0, 0.4, uv.y);
+    float xFade = 1.0 - pow(abs(uv.x - 0.5) * 2.0, 2.0);
+
+    float smoke = shape * xFade * (n * 0.6 + n2 * 0.4);
+    smoke *= 0.5;
+
+    gl_FragColor = vec4(1.0, 1.0, 1.0, smoke);
+  }
+`
+
+function SmokeEffect() {
+  const materialRef = useRef<THREE.ShaderMaterial>(null)
+
+  const uniforms = useMemo(() => ({
+    uTime: { value: 0 },
+  }), [])
+
+  useFrame((state) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime
+    }
+  })
+
+  return (
+    <mesh position={[0, 0.3, -1.5]} rotation={[0, -Math.PI / 2, 0]}>
+      <planeGeometry args={[0.5, 1.0]} />
+      <shaderMaterial
+        ref={materialRef}
+        vertexShader={smokeVertexShader}
+        fragmentShader={smokeFragmentShader}
+        uniforms={uniforms}
+        transparent={true}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
+  )
+}
 
 function MatchstickModel() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,6 +102,7 @@ function MatchstickModel() {
         />
       </mesh>
       <pointLight position={[0, 0, -1]} color="#ff4500" intensity={3} distance={5} />
+      <SmokeEffect />
     </group>
   )
 }
@@ -179,7 +247,7 @@ export function RozsaText() {
             ref={matchRef}
             style={{
               position: 'absolute',
-              top: -28,
+              top: -40,
               left: -30,
               width: 200,
               height: 50,
@@ -193,18 +261,6 @@ export function RozsaText() {
               <directionalLight position={[2, 3, 2]} intensity={0.8} />
               <MatchstickModel />
             </Canvas>
-            <div style={{ position: 'absolute', top: 0, left: 18, width: 30, height: 60, pointerEvents: 'none' }}>
-              {[0, 1, 2, 3, 4].map(i => (
-                <div
-                  key={i}
-                  className="match-smoke"
-                  style={{
-                    animationDelay: `${i * 0.7}s`,
-                    left: `${8 + Math.sin(i * 1.8) * 6}px`,
-                  }}
-                />
-              ))}
-            </div>
           </div>
         </div>
       </div>

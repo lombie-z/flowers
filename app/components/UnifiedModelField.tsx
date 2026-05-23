@@ -376,10 +376,15 @@ export function UnifiedModelField() {
     material: treeBranch.materials.None,
   }], [treeBranch])
 
-  const matchstickParts = useMemo<MeshPart[]>(() => [
-    { geometry: matchstick.nodes['Node-Mesh'].geometry, material: matchstick.materials.lambert2SG },
-    { geometry: matchstick.nodes['Node-Mesh_1'].geometry, material: matchstick.materials.lambert3SG },
-  ], [matchstick])
+  const matchstickParts = useMemo<MeshPart[]>(() => {
+    const headMat = matchstick.materials.lambert3SG.clone()
+    headMat.emissive = new THREE.Color('#ff4500')
+    headMat.emissiveIntensity = 1.0
+    return [
+      { geometry: matchstick.nodes['Node-Mesh'].geometry, material: matchstick.materials.lambert2SG },
+      { geometry: matchstick.nodes['Node-Mesh_1'].geometry, material: headMat },
+    ]
+  }, [matchstick])
 
   const baseScales = useMemo(() => [0.46, 1.3, 0.8, 0.7, 1.2], [])
 
