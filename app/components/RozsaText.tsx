@@ -83,10 +83,10 @@ const smokeVertexShader = `
     float taper = 0.3 + 0.7 * smoothstep(0.0, 0.6, uv.y);
     pos.x *= taper;
 
-    pos.x += sin(uTime * 0.2 + uTexOffset * 3.0) * 0.05 * uv.y;
+    pos.x += sin(uTime * 0.08 + uTexOffset * 3.0) * 0.05 * uv.y;
 
-    float twist = sin(uv.y * 4.0 - uTime * 0.5 + uTexOffset * 6.283) * 0.6
-                + sin(uv.y * 7.0 + uTime * 0.3 + uTexOffset * 3.14) * 0.4;
+    float twist = sin(uv.y * 4.0 - uTime * 0.2 + uTexOffset * 6.283) * 0.6
+                + sin(uv.y * 7.0 + uTime * 0.12 + uTexOffset * 3.14) * 0.4;
     float angle = twist * uTwistStrength * smoothstep(0.0, 0.4, uv.y);
     pos.xz = rotate2D(pos.xz, angle);
 
@@ -125,16 +125,16 @@ const smokeFragmentShader = `
     float alpha = noise * fade * heightFade * 0.6;
 
     float warmth = smoothstep(0.25, 0.0, vUv.y);
-    vec3 color = mix(vec3(0.9, 0.9, 0.92), vec3(1.0, 0.85, 0.7), warmth * 0.3);
+    vec3 color = mix(vec3(0.62, 0.62, 0.64), vec3(0.75, 0.65, 0.55), warmth * 0.3);
 
     gl_FragColor = vec4(color, alpha);
   }
 `
 
 const SMOKE_PLANES = [
-  { rotY: 0, z: 0, scaleX: 1.0, speed: 0.15, texOffset: 0 },
-  { rotY: Math.PI * 0.3, z: 0.02, scaleX: 0.85, speed: 0.12, texOffset: 0.33 },
-  { rotY: -Math.PI * 0.25, z: -0.02, scaleX: 0.9, speed: 0.18, texOffset: 0.66 },
+  { rotY: 0, z: 0, scaleX: 1.0, speed: 0.06, texOffset: 0 },
+  { rotY: Math.PI * 0.3, z: 0.02, scaleX: 0.85, speed: 0.045, texOffset: 0.33 },
+  { rotY: -Math.PI * 0.25, z: -0.02, scaleX: 0.9, speed: 0.07, texOffset: 0.66 },
 ]
 
 function SmokeEffect() {
@@ -360,7 +360,7 @@ export function RozsaText() {
             }}
           >
             {/* Smoke wisps rising above matchstick */}
-            <div style={{ position: 'absolute', top: -170, left: -5, width: 90, height: 200 }}>
+            <div style={{ position: 'absolute', top: -170, left: -10, width: 90, height: 200 }}>
               <Canvas camera={{ position: [0, 0, 2], fov: 50 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
                 <SmokeEffect />
               </Canvas>
