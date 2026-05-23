@@ -5,7 +5,7 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { scrollState } from '@/app/lib/scrollState'
 
-const smokeState = { opacity: 0, wasVisible: false, fadeStart: 0 }
+const smokeState = { revealHeight: 0, wasVisible: false, fadeStart: 0 }
 
 function createNoiseTexture(size = 256): THREE.DataTexture {
   const perm = new Uint8Array(512)
@@ -105,7 +105,7 @@ const smokeFragmentShader = `
   uniform float uRemapHigh;
   uniform float uEdgeX;
   uniform float uEdgeY;
-  uniform float uOpacity;
+  uniform float uRevealHeight;
   varying vec2 vUv;
 
   void main() {
@@ -125,7 +125,8 @@ const smokeFragmentShader = `
 
     float heightFade = 1.0 - smoothstep(0.4, 1.0, vUv.y) * 0.5;
 
-    float alpha = noise * fade * heightFade * 0.6 * uOpacity;
+    float reveal = smoothstep(uRevealHeight, uRevealHeight - 0.2, vUv.y);
+    float alpha = noise * fade * heightFade * 0.6 * reveal;
 
     float warmth = smoothstep(0.25, 0.0, vUv.y);
     vec3 color = mix(vec3(0.62, 0.62, 0.64), vec3(0.75, 0.65, 0.55), warmth * 0.3);
@@ -153,13 +154,13 @@ function SmokeEffect() {
     uEdgeY: { value: 0.15 },
     uTwistStrength: { value: 1.2 },
     uTexOffset: { value: p.texOffset },
-    uOpacity: { value: 0 },
+    uRevealHeight: { value: 0 },
   })), [noiseTexture])
 
   useFrame((state) => {
     for (const u of uniformSets) {
       u.uTime.value = state.clock.elapsedTime
-      u.uOpacity.value = smokeState.opacity
+      u.uRevealHeight.value = smokeState.revealHeight
     }
   })
 
@@ -274,9 +275,9 @@ export function RozsaText() {
       smokeState.wasVisible = matchVisible
       if (matchVisible) {
         const raw = Math.min(1, (now - smokeState.fadeStart) / 2.0)
-        smokeState.opacity = 1 - Math.pow(1 - raw, 3)
+        smokeState.revealHeight = raw * 1.2
       } else {
-        smokeState.opacity = 0
+        smokeState.revealHeight = 0
       }
 
       rafId = requestAnimationFrame(tick)
