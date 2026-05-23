@@ -59,9 +59,9 @@ export function RozsaText() {
         ref.current.style.transform = `scale(${scale})`
       }
       if (coverRef.current) {
-        // Cover: fades in at 92%, then falls to top-left of card from 94-99%
-        const fadeIn = Math.max(0, Math.min(1, (scrollState.offset - 0.92) / 0.03))
-        const fallT = Math.max(0, Math.min(1, (scrollState.offset - 0.94) / 0.05))
+        // Cover: fades in at 95%, then falls to top-left of card from 96-100%
+        const fadeIn = Math.max(0, Math.min(1, (scrollState.offset - 0.95) / 0.02))
+        const fallT = Math.max(0, Math.min(1, (scrollState.offset - 0.96) / 0.04))
         const eased = fallT * fallT * (3 - 2 * fallT)
 
         const startY = -60
@@ -85,8 +85,8 @@ export function RozsaText() {
         coverRef.current.style.transform = `perspective(400px) translate(${x}px, ${y}px) rotate(${rot}deg) rotateX(${rotX}deg) rotateY(${rotY}deg)`
       }
       if (matchRef.current) {
-        // Match fades in after cover has landed (96-99%)
-        const matchFade = Math.max(0, Math.min(1, (scrollState.offset - 0.96) / 0.03))
+        // Match fades in only when scale is essentially done (99-100%)
+        const matchFade = Math.max(0, Math.min(1, (scrollState.offset - 0.99) / 0.01))
         matchRef.current.style.opacity = String(matchFade)
       }
       rafId = requestAnimationFrame(tick)
