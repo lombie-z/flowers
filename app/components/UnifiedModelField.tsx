@@ -266,6 +266,8 @@ function ModelLayer({
             color={part.material.color}
             roughness={part.material.roughness ?? 0.5}
             metalness={part.material.metalness ?? 0}
+            emissive={part.material.emissive}
+            emissiveIntensity={part.material.emissiveIntensity ?? 0}
             side={THREE.DoubleSide}
             transparent={true}
             alphaTest={0.01}

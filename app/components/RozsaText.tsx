@@ -57,8 +57,8 @@ function SmokeEffect() {
   })
 
   return (
-    <mesh position={[0, 1.5, -0.5]} rotation={[0, -Math.PI / 2, 0]}>
-      <planeGeometry args={[2.0, 4.0]} />
+    <mesh position={[0, 3.0, -0.5]} rotation={[0, -Math.PI / 2, 0]}>
+      <planeGeometry args={[2.5, 8.0]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={smokeVertexShader}
@@ -88,7 +88,7 @@ function MatchstickModel() {
     <group
       rotation={[0, Math.PI / 2, 0.1]}
       scale={0.2}
-      position={[-0.65, 0, 0]}
+      position={[-0.65, -0.42, 0]}
     >
       <mesh geometry={nodes['Node-Mesh'].geometry}>
         <meshStandardMaterial {...materials.lambert2SG} />
@@ -247,10 +247,10 @@ export function RozsaText() {
             ref={matchRef}
             style={{
               position: 'absolute',
-              top: -40,
+              top: -190,
               left: -30,
               width: 200,
-              height: 50,
+              height: 200,
               zIndex: 4,
               opacity: 0,
               pointerEvents: 'none',
