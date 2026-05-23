@@ -103,6 +103,7 @@ const smokeFragmentShader = `
   uniform float uRemapHigh;
   uniform float uEdgeX;
   uniform float uEdgeY;
+  uniform float uOpacity;
   varying vec2 vUv;
 
   void main() {
@@ -122,7 +123,7 @@ const smokeFragmentShader = `
 
     float heightFade = 1.0 - smoothstep(0.4, 1.0, vUv.y) * 0.5;
 
-    float alpha = noise * fade * heightFade * 0.6;
+    float alpha = noise * fade * heightFade * 0.6 * uOpacity;
 
     float warmth = smoothstep(0.25, 0.0, vUv.y);
     vec3 color = mix(vec3(0.62, 0.62, 0.64), vec3(0.75, 0.65, 0.55), warmth * 0.3);
@@ -139,6 +140,8 @@ const SMOKE_PLANES = [
 
 function SmokeEffect() {
   const noiseTexture = useMemo(() => createNoiseTexture(256), [])
+  const wasVisible = useRef(false)
+  const fadeStart = useRef(0)
 
   const uniformSets = useMemo(() => SMOKE_PLANES.map(p => ({
     uTexture: { value: noiseTexture },
@@ -150,11 +153,24 @@ function SmokeEffect() {
     uEdgeY: { value: 0.15 },
     uTwistStrength: { value: 1.2 },
     uTexOffset: { value: p.texOffset },
+    uOpacity: { value: 0 },
   })), [noiseTexture])
 
   useFrame((state) => {
+    const t = state.clock.elapsedTime
+    const visible = scrollState.offset > 0.99
+
+    if (visible && !wasVisible.current) {
+      fadeStart.current = t
+    }
+    wasVisible.current = visible
+
+    const raw = visible ? Math.min(1, (t - fadeStart.current) / 2.0) : 0
+    const eased = 1 - Math.pow(1 - raw, 3)
+
     for (const u of uniformSets) {
-      u.uTime.value = state.clock.elapsedTime
+      u.uTime.value = t
+      u.uOpacity.value = eased
     }
   })
 
