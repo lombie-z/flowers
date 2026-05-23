@@ -18,7 +18,7 @@ function MatchstickModel() {
   })
 
   return (
-    <group rotation={[0, 0, -0.4]} scale={0.22} position={[0, 0.2, 0]}>
+    <group rotation={[Math.PI / 2, 0, -0.4]} scale={0.22} position={[0, 0.2, 0]}>
       {/* Stick */}
       <mesh geometry={nodes['Node-Mesh'].geometry}>
         <meshStandardMaterial {...materials.lambert2SG} />
