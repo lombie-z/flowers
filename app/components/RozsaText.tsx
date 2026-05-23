@@ -5,6 +5,8 @@ import { useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { scrollState } from '@/app/lib/scrollState'
 
+const smokeState = { opacity: 0, wasVisible: false, fadeStart: 0 }
+
 function createNoiseTexture(size = 256): THREE.DataTexture {
   const perm = new Uint8Array(512)
   const p = new Uint8Array(256)
@@ -140,8 +142,6 @@ const SMOKE_PLANES = [
 
 function SmokeEffect() {
   const noiseTexture = useMemo(() => createNoiseTexture(256), [])
-  const wasVisible = useRef(false)
-  const fadeStart = useRef(0)
 
   const uniformSets = useMemo(() => SMOKE_PLANES.map(p => ({
     uTexture: { value: noiseTexture },
@@ -157,20 +157,9 @@ function SmokeEffect() {
   })), [noiseTexture])
 
   useFrame((state) => {
-    const t = state.clock.elapsedTime
-    const visible = scrollState.offset > 0.99
-
-    if (visible && !wasVisible.current) {
-      fadeStart.current = t
-    }
-    wasVisible.current = visible
-
-    const raw = visible ? Math.min(1, (t - fadeStart.current) / 2.0) : 0
-    const eased = 1 - Math.pow(1 - raw, 3)
-
     for (const u of uniformSets) {
-      u.uTime.value = t
-      u.uOpacity.value = eased
+      u.uTime.value = state.clock.elapsedTime
+      u.uOpacity.value = smokeState.opacity
     }
   })
 
@@ -274,6 +263,20 @@ export function RozsaText() {
       if (matchRef.current) {
         const matchFade = Math.max(0, Math.min(1, (offset - 0.99) / 0.01))
         matchRef.current.style.opacity = String(matchFade)
+      }
+
+      // Smoke ease-in: ramp over 2s each time match appears
+      const matchVisible = offset > 0.99
+      const now = performance.now() / 1000
+      if (matchVisible && !smokeState.wasVisible) {
+        smokeState.fadeStart = now
+      }
+      smokeState.wasVisible = matchVisible
+      if (matchVisible) {
+        const raw = Math.min(1, (now - smokeState.fadeStart) / 2.0)
+        smokeState.opacity = 1 - Math.pow(1 - raw, 3)
+      } else {
+        smokeState.opacity = 0
       }
 
       rafId = requestAnimationFrame(tick)
