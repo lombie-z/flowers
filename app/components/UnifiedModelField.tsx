@@ -408,7 +408,7 @@ export function UnifiedModelField() {
     // Pick the instance closest to the centre of section 1's camera range (z ≈ -24)
     let bestIdx = 0, bestDist = Infinity
     for (let i = 0; i < branchParticles.length; i++) {
-      const d = Math.abs(branchParticles[i].z - (-24))
+      const d = Math.abs(branchParticles[i].z - (-30))
       if (d < bestDist) { bestDist = d; bestIdx = i }
     }
     litData[bestIdx] = 1.0
