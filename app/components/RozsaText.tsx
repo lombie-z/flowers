@@ -171,6 +171,19 @@ export function RozsaText() {
             <directionalLight position={[2, 3, 2]} intensity={0.8} />
             <MatchstickModel />
           </Canvas>
+          {/* Smoke wisps from match head */}
+          <div style={{ position: 'absolute', top: 0, left: 18, width: 30, height: 60, pointerEvents: 'none' }}>
+            {[0, 1, 2, 3, 4].map(i => (
+              <div
+                key={i}
+                className="match-smoke"
+                style={{
+                  animationDelay: `${i * 0.7}s`,
+                  left: `${8 + Math.sin(i * 1.8) * 6}px`,
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

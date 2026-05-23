@@ -188,6 +188,35 @@ html[style*="cursor: pointer"], html[style*="cursor: pointer"] * {
   100% { transform: scale(8); opacity: 0; }
 }
 
+.match-smoke {
+  position: absolute;
+  bottom: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(180, 160, 140, 0.4);
+  filter: blur(4px);
+  animation: smoke-rise 3s ease-out infinite;
+}
+
+@keyframes smoke-rise {
+  0% {
+    transform: translateY(0) translateX(0) scale(0.5);
+    opacity: 0.5;
+  }
+  30% {
+    opacity: 0.35;
+  }
+  60% {
+    transform: translateY(-30px) translateX(-8px) scale(1.8);
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateY(-55px) translateX(-14px) scale(2.5);
+    opacity: 0;
+  }
+}
+
 @keyframes iridescent {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
