@@ -91,7 +91,9 @@ const vertexShader = `
   uniform float uRippleIntensities[12];
   uniform vec3 uRippleOrigin;
   attribute float aRandom;
+  attribute float aLit;
   varying float vRipple;
+  varying float vLit;
 
   void main() {
     vec3 instPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
@@ -116,6 +118,7 @@ const vertexShader = `
       }
     }
     vRipple = min(totalRipple, 1.5);
+    vLit = aLit;
   }
 `
 
@@ -123,7 +126,9 @@ const fragmentShader = `
   uniform vec3 uSectionColor;
   uniform float uFadeOpacity;
   uniform float uTransitionBlur;
+  uniform float uAllLit;
   varying float vRipple;
+  varying float vLit;
 
   void main() {
     if (uFadeOpacity < 0.01) discard;
@@ -133,6 +138,8 @@ const fragmentShader = `
     csm_DiffuseColor.rgb = mix(csm_DiffuseColor.rgb, avgColor, uTransitionBlur);
     csm_DiffuseColor.a *= uFadeOpacity;
     csm_Emissive += mix(uSectionColor * vRipple * 2.5, avgColor * 0.3, uTransitionBlur);
+    float litFactor = max(vLit, uAllLit);
+    csm_Emissive += vec3(1.0, 0.27, 0.0) * 0.8 * litFactor;
   }
 `
 
@@ -150,6 +157,7 @@ function smoothstep(t: number, edge0: number, edge1: number): number {
 interface MeshPart {
   geometry: THREE.BufferGeometry
   material: THREE.MeshStandardMaterial
+  isHead?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +173,7 @@ function ModelLayer({
   visibleRef,
   count,
   blurOverrideRef,
+  allLitRef,
 }: {
   meshParts: MeshPart[]
   baseScale: number
@@ -175,19 +184,24 @@ function ModelLayer({
   visibleRef: React.MutableRefObject<boolean>
   count?: number
   blurOverrideRef?: React.MutableRefObject<number>
+  allLitRef?: React.MutableRefObject<number>
 }) {
   const meshRefs = useRef<THREE.InstancedMesh[]>([])
   const materialRefs = useRef<THREE.ShaderMaterial[]>([])
   const groupRef = useRef<THREE.Group>(null)
 
   // Clone geometries and inject aRandom attribute
+  const instanceCount = count ?? COUNT
   const processedParts = useMemo(() => {
     return meshParts.map(part => {
       const geom = part.geometry.clone()
       geom.setAttribute('aRandom', new THREE.InstancedBufferAttribute(randomData, 1))
+      if (!geom.getAttribute('aLit')) {
+        geom.setAttribute('aLit', new THREE.InstancedBufferAttribute(new Float32Array(instanceCount), 1))
+      }
       return { ...part, geometry: geom }
     })
-  }, [meshParts, randomData])
+  }, [meshParts, randomData, instanceCount])
 
   // Set instance matrices using shared positions
   useLayoutEffect(() => {
@@ -212,7 +226,7 @@ function ModelLayer({
       groupRef.current.visible = visibleRef.current
     }
 
-    materialRefs.current.forEach(mat => {
+    materialRefs.current.forEach((mat, partIndex) => {
       if (!mat?.uniforms) return
       if (mat.uniforms.uTime) mat.uniforms.uTime.value = state.clock.elapsedTime
       if (mat.uniforms.uFadeScale) mat.uniforms.uFadeScale.value = fadeScaleRef.current
@@ -234,6 +248,9 @@ function ModelLayer({
       }
       if (mat.uniforms.uTransitionBlur) {
         mat.uniforms.uTransitionBlur.value = blurOverrideRef ? blurOverrideRef.current : scrollState.transitionBlur
+      }
+      if (mat.uniforms.uAllLit && allLitRef) {
+        mat.uniforms.uAllLit.value = meshParts[partIndex]?.isHead ? allLitRef.current : 0
       }
     })
   })
@@ -261,6 +278,7 @@ function ModelLayer({
               uRippleOrigin: { value: new THREE.Vector3(8, 0, 0) },
               uSectionColor: { value: new THREE.Vector3(1, 0.84, 0.31) },
               uTransitionBlur: { value: 0 },
+              uAllLit: { value: 0 },
             }}
             map={part.material.map}
             color={part.material.color}
@@ -378,13 +396,21 @@ export function UnifiedModelField() {
     material: treeBranch.materials.None,
   }], [treeBranch])
 
+  const allLitRef = useRef({ current: 0 }).current
+
   const matchstickParts = useMemo<MeshPart[]>(() => {
     const headMat = matchstick.materials.lambert3SG.clone()
-    headMat.emissive = new THREE.Color('#ff4500')
-    headMat.emissiveIntensity = 0.8
+    headMat.emissive = new THREE.Color('#000000')
+    headMat.emissiveIntensity = 0
+
+    const headGeom = matchstick.nodes['Node-Mesh_1'].geometry.clone()
+    const litData = new Float32Array(BRANCH_COUNT)
+    litData[0] = 1.0
+    headGeom.setAttribute('aLit', new THREE.InstancedBufferAttribute(litData, 1))
+
     return [
       { geometry: matchstick.nodes['Node-Mesh'].geometry, material: matchstick.materials.lambert2SG },
-      { geometry: matchstick.nodes['Node-Mesh_1'].geometry, material: headMat },
+      { geometry: headGeom, material: headMat, isHead: true },
     ]
   }, [matchstick])
 
@@ -476,6 +502,8 @@ export function UnifiedModelField() {
       branchFadeOpacityRefs[1].current = 0
       branchVisibleRefs[1].current = false
     }
+
+    allLitRef.current = (section === 4 || incoming === 4) ? 1 : 0
   })
 
   return (
@@ -515,6 +543,7 @@ export function UnifiedModelField() {
         visibleRef={branchVisibleRefs[1]}
         count={BRANCH_COUNT}
         blurOverrideRef={branchBlurRef}
+        allLitRef={allLitRef}
       />
     </group>
   )
