@@ -57,8 +57,8 @@ function SmokeEffect() {
   })
 
   return (
-    <mesh position={[0, 3.0, -0.5]} rotation={[0, -Math.PI / 2, 0]}>
-      <planeGeometry args={[2.5, 8.0]} />
+    <mesh position={[0, 0, 0]}>
+      <planeGeometry args={[1.5, 3.0]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={smokeVertexShader}
@@ -88,7 +88,7 @@ function MatchstickModel() {
     <group
       rotation={[0, Math.PI / 2, 0.1]}
       scale={0.2}
-      position={[-0.65, -0.42, 0]}
+      position={[-0.65, 0, 0]}
     >
       <mesh geometry={nodes['Node-Mesh'].geometry}>
         <meshStandardMaterial {...materials.lambert2SG} />
@@ -102,7 +102,6 @@ function MatchstickModel() {
         />
       </mesh>
       <pointLight position={[0, 0, -1]} color="#ff4500" intensity={3} distance={5} />
-      <SmokeEffect />
     </group>
   )
 }
@@ -243,24 +242,33 @@ export function RozsaText() {
           </div>
 
           {/* 3D Matchstick */}
+          {/* Smoke wisps rising above the match */}
           <div
             ref={matchRef}
             style={{
               position: 'absolute',
-              top: -190,
+              top: -40,
               left: -30,
               width: 200,
-              height: 200,
               zIndex: 4,
               opacity: 0,
               pointerEvents: 'none',
             }}
           >
-            <Canvas camera={{ position: [0, 0, 2], fov: 16 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
-              <ambientLight intensity={0.6} />
-              <directionalLight position={[2, 3, 2]} intensity={0.8} />
-              <MatchstickModel />
-            </Canvas>
+            {/* Smoke column above matchstick */}
+            <div style={{ position: 'absolute', top: -180, left: 10, width: 40, height: 180 }}>
+              <Canvas camera={{ position: [0, 0, 2], fov: 50 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
+                <SmokeEffect />
+              </Canvas>
+            </div>
+            {/* Matchstick */}
+            <div style={{ width: 200, height: 50 }}>
+              <Canvas camera={{ position: [0, 0, 2], fov: 16 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
+                <ambientLight intensity={0.6} />
+                <directionalLight position={[2, 3, 2]} intensity={0.8} />
+                <MatchstickModel />
+              </Canvas>
+            </div>
           </div>
         </div>
       </div>
