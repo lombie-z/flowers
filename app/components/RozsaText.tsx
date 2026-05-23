@@ -18,7 +18,11 @@ function MatchstickModel() {
   })
 
   return (
-    <group rotation={[Math.PI / 2, 0, -0.4]} scale={0.22} position={[0, 0.2, 0]}>
+    <group
+      rotation={[0, Math.PI / 2, 0.1]}
+      scale={0.2}
+      position={[-0.65, 0, 0]}
+    >
       {/* Stick */}
       <mesh geometry={nodes['Node-Mesh'].geometry}>
         <meshStandardMaterial {...materials.lambert2SG} />
@@ -32,8 +36,8 @@ function MatchstickModel() {
           emissiveIntensity={1.2}
         />
       </mesh>
-      {/* Point light at the tip */}
-      <pointLight position={[-1.8, 0, 0]} color="#ff4500" intensity={3} distance={4} />
+      {/* Point light at the match head tip (head is at negative Z end in model space) */}
+      <pointLight position={[0, 0, -1]} color="#ff4500" intensity={3} distance={5} />
     </group>
   )
 }
@@ -153,18 +157,17 @@ export function RozsaText() {
           ref={matchRef}
           style={{
             position: 'absolute',
-            top: -55,
-            left: -10,
-            width: 160,
-            height: 60,
+            top: -28,
+            left: -30,
+            width: 200,
+            height: 50,
             zIndex: 4,
             opacity: 0,
-            transform: 'rotate(-20deg)',
             pointerEvents: 'none',
           }}
         >
-          <Canvas camera={{ position: [0, 0, 3], fov: 35 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
-            <ambientLight intensity={0.5} />
+          <Canvas camera={{ position: [0, 0, 2], fov: 16 }} gl={{ alpha: true }} style={{ width: '100%', height: '100%' }}>
+            <ambientLight intensity={0.6} />
             <directionalLight position={[2, 3, 2]} intensity={0.8} />
             <MatchstickModel />
           </Canvas>
