@@ -57,8 +57,8 @@ function SmokeEffect() {
   })
 
   return (
-    <mesh position={[0, 0.3, -1.5]} rotation={[0, -Math.PI / 2, 0]}>
-      <planeGeometry args={[0.5, 1.0]} />
+    <mesh position={[0, 1.5, -0.5]} rotation={[0, -Math.PI / 2, 0]}>
+      <planeGeometry args={[2.0, 4.0]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={smokeVertexShader}

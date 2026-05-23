@@ -132,7 +132,7 @@ const fragmentShader = `
     vec3 avgColor = csm_DiffuseColor.rgb * 0.5 + uSectionColor * 0.5;
     csm_DiffuseColor.rgb = mix(csm_DiffuseColor.rgb, avgColor, uTransitionBlur);
     csm_DiffuseColor.a *= uFadeOpacity;
-    csm_Emissive = mix(uSectionColor * vRipple * 2.5, avgColor * 0.3, uTransitionBlur);
+    csm_Emissive += mix(uSectionColor * vRipple * 2.5, avgColor * 0.3, uTransitionBlur);
   }
 `
 
@@ -379,7 +379,7 @@ export function UnifiedModelField() {
   const matchstickParts = useMemo<MeshPart[]>(() => {
     const headMat = matchstick.materials.lambert3SG.clone()
     headMat.emissive = new THREE.Color('#ff4500')
-    headMat.emissiveIntensity = 1.0
+    headMat.emissiveIntensity = 0.8
     return [
       { geometry: matchstick.nodes['Node-Mesh'].geometry, material: matchstick.materials.lambert2SG },
       { geometry: matchstick.nodes['Node-Mesh_1'].geometry, material: headMat },
