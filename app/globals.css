@@ -194,8 +194,8 @@ html[style*="cursor: pointer"], html[style*="cursor: pointer"] * {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: rgba(180, 160, 140, 0.4);
-  filter: blur(4px);
+  background: rgba(255, 255, 255, 0.6);
+  filter: blur(3px);
   animation: smoke-rise 3s ease-out infinite;
 }
 
