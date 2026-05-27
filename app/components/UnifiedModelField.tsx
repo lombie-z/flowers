@@ -84,9 +84,12 @@ function cropAndCenterGeometry(geometry: THREE.BufferGeometry, yCutoff: number):
 // ---------------------------------------------------------------------------
 // Shaders
 // ---------------------------------------------------------------------------
+const ELEMENT_FALL = 40
+
 const vertexShader = `
   uniform float uTime;
   uniform float uFadeScale;
+  uniform float uScrollOffset;
   uniform float uRippleAges[12];
   uniform float uRippleIntensities[12];
   uniform vec3 uRippleOrigin;
@@ -99,12 +102,15 @@ const vertexShader = `
     vec3 instPos = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
 
     // Single unified sway — everything moves the same direction at once
-    float swayX = sin(uTime * 0.2) * 1.5;
-    float swayY = sin(uTime * 0.15) * 0.6;
+    float swayX = sin(uTime * 0.2) * 0.4;
+    float swayY = sin(uTime * 0.15) * 0.15;
     csm_Position.x += swayX;
     csm_Position.y += swayY;
 
     csm_Position *= uFadeScale;
+
+    float fallRate = ${ELEMENT_FALL.toFixed(1)} * (aRandom * aRandom * aRandom);
+    csm_Position.z -= uScrollOffset * fallRate;
     float dist = distance(instPos, uRippleOrigin);
     float totalRipple = 0.0;
     for (int i = 0; i < 12; i++) {
@@ -230,6 +236,7 @@ function ModelLayer({
       if (!mat?.uniforms) return
       if (mat.uniforms.uTime) mat.uniforms.uTime.value = state.clock.elapsedTime
       if (mat.uniforms.uFadeScale) mat.uniforms.uFadeScale.value = fadeScaleRef.current
+      if (mat.uniforms.uScrollOffset) mat.uniforms.uScrollOffset.value = scrollState.offset || 0
       if (mat.uniforms.uFadeOpacity) mat.uniforms.uFadeOpacity.value = fadeOpacityRef.current
       if (mat.uniforms.uRippleAges) {
         const arr = mat.uniforms.uRippleAges.value
@@ -272,6 +279,7 @@ function ModelLayer({
             uniforms={{
               uTime: { value: 0 },
               uFadeScale: { value: 0 },
+              uScrollOffset: { value: 0 },
               uFadeOpacity: { value: 0 },
               uRippleAges: { value: [99,99,99,99,99,99,99,99,99,99,99,99] },
               uRippleIntensities: { value: [1,1,1,1,1,1,1,1,1,1,1,1] },
