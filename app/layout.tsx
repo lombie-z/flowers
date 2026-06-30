@@ -19,20 +19,20 @@ const rock3d = Rock_3D({
 });
 
 export const metadata: Metadata = {
-  title: "Good Talk — I. Rozsa",
-  description: "I. Rozsa — independent album.",
+  title: "Good Talk — Isaac Rozsa",
+  description: "Good Talk. Independent album by Isaac Rozsa, just me and my synths.",
   metadataBase: new URL("https://goodtalk.isaacrozsa.com"),
   openGraph: {
-    title: "Good Talk — I. Rozsa",
-    description: "I. Rozsa — independent album.",
+    title: "Good Talk — Isaac Rozsa",
+    description: "Good Talk. Independent album by Isaac Rozsa, just me and my synths.",
     type: "website",
     siteName: "I. Rozsa",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Good Talk — I. Rozsa",
-    description: "I. Rozsa — independent album.",
+    title: "Good Talk — Isaac Rozsa",
+    description: "Good Talk. Independent album by Isaac Rozsa, just me and my synths.",
   },
 };
 
